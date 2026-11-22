@@ -2,6 +2,8 @@
 
 An **unofficial, portable patcher for Homeworld 1 Classic build 2.303** included with *Homeworld Remastered Collection* on **Steam or GOG**.
 
+**Releases and project history:** [CHANGELOG.md](CHANGELOG.md) — one running log for every version.
+
 ## What it does
 
 This patcher updates **your installed copy** of `Homeworld.exe` with 74 targeted byte changes to:
@@ -81,6 +83,7 @@ Close the game, remove or rename the modified `Homeworld.exe`, then rename the `
 - `RUN_PATCHER.cmd` — double-click launcher
 - `Patch-Homeworld1Classic.ps1` — readable patching script
 - `patches.json` — 74 explicit offset/byte modifications and checksums
+- `CHANGELOG.md` — one ongoing release and development history
 - `PATCH_REFERENCE.md` — purpose, offsets, and exact bytes for all 74 patches
 - `THIRD_PARTY_NOTICES.md` — original source copyright and license notices
 - `LICENSE` — MIT license for this project
