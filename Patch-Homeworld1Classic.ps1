@@ -227,6 +227,7 @@ function Restore-OriginalHomeworldExe([string]$ExePath, $PatchData) {
     # Copy backup to a temporary file; atomically replace the EXE.
     # Never consume or delete the original backup.
     $temp = Join-Path $folder ('.homeworld-restore-' + [Guid]::NewGuid().ToString('N') + '.tmp')
+    $rollback = Join-Path $folder ('.homeworld-patched-rollback-' + [Guid]::NewGuid().ToString('N') + '.tmp')
     try {
         [System.IO.File]::Copy($verifiedBackup.FullName, $temp)
         $tempHash = (Get-FileHash -LiteralPath $temp -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -237,14 +238,20 @@ function Restore-OriginalHomeworldExe([string]$ExePath, $PatchData) {
         if ($stillPatched -ne $expectedPatched) {
             throw 'Game executable changed during restore preparation. Nothing replaced.'
         }
-        [System.IO.File]::Replace($temp, $ExePath, $null)
+        # .NET Framework requires an actual rollback path for File.Replace.
+        # This temporarily saves the patched EXE until the restored hash is checked.
+        [System.IO.File]::Replace($temp, $ExePath, $rollback)
     } finally {
         if ([System.IO.File]::Exists($temp)) { [System.IO.File]::Delete($temp) }
     }
 
     $restoredHash = (Get-FileHash -LiteralPath $ExePath -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($restoredHash -ne $expectedOriginal) {
-        throw "Restore result did not match the expected original hash. The original backup remains at: $($verifiedBackup.FullName)"
+        throw "Restore verification failed. Original backup: $($verifiedBackup.FullName); temporary patched rollback: $rollback"
+    }
+    if ([System.IO.File]::Exists($rollback)) {
+        try { [System.IO.File]::Delete($rollback) }
+        catch { Write-Warning "Restore succeeded, but the temporary patched rollback could not be removed: $rollback" }
     }
     Write-Host ''
     Write-Host 'SUCCESS! Original Homeworld.exe restored.' -ForegroundColor Green
