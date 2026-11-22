@@ -4,6 +4,18 @@ All notable changes to the **Homeworld 1 Classic Portable Patcher** are recorded
 
 ## Unreleased
 
+## [v0.1.4](https://github.com/JamieeLee/Homeworld-Classic-Patcher/releases/tag/v0.1.4) — Backup Maintenance (pre-release)
+
+### Changed
+- Reuse a single `Homeworld.exe.original-2.303.bak` across install/restore cycles instead of creating a new timestamped backup on every install.
+- Set newly created backup files' **Date modified** to their actual backup creation time; leave existing validated backups' timestamps unchanged.
+- Add **Clean Up Backups** to the launcher. After explicit `CLEAN` confirmation, consolidate verified older copies into the reusable backup.
+- Keep unknown, corrupted, non-matching, or inaccessible backup files untouched. Backup cleanup never changes the game executable or the 74 patch definitions.
+- Simplify the launcher prompts and messages.
+
+### Verification
+- Automated Windows tests cover initial backup creation, repeated installs and restores, cancellation, legacy duplicate cleanup, invalid-backup preservation, and backup timestamps.
+
 ## [v0.1.3](https://github.com/JamieeLee/Homeworld-Classic-Patcher/releases/tag/v0.1.3) — Restore Original from Backup (pre-release)
 
 ### Added
