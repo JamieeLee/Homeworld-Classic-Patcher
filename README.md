@@ -4,6 +4,8 @@ An **unofficial, portable patcher for Homeworld 1 Classic build 2.303** included
 
 **Releases and project history:** [CHANGELOG.md](CHANGELOG.md) — one running log for every version.
 
+**Current published download:** [v0.1.2 pre-release](https://github.com/JamieeLee/Homeworld-Classic-Patcher/releases/tag/v0.1.2). The ZIP and checksum are attached under **Assets**; pre-releases do not appear as GitHub's latest stable release.
+
 ## What it does
 
 This patcher updates **your installed copy** of `Homeworld.exe` with 74 targeted byte changes to:
@@ -47,7 +49,7 @@ If the executable does not match the supported version, the patcher refuses to m
 
 1. Install *Homeworld Remastered Collection*, including **Homeworld 1 Classic**.
 2. Download the release ZIP and extract the entire archive into one folder.
-3. Double-click `RUN_PATCHER.cmd` on Windows.
+3. Double-click `RUN_PATCHER.cmd` on Windows and choose **1. Install Patch**.
 4. The patcher searches Steam libraries and GOG installation folders, labels each detected candidate **Steam** or **GOG**, shows the full `Homeworld.exe` path, and asks for `Y` confirmation. If no match is found, or you decline every path, it opens a file picker for `Homeworld1Classic\exe\Homeworld.exe`.
 5. Confirm only after its stock SHA-256 verifies. Type `YES` to patch.
 6. The patcher creates a timestamped backup beside the original file.
@@ -67,7 +69,16 @@ This kit refuses unknown builds or modified files rather than guessing offsets.
 
 ## Restore the original
 
-Close the game, remove or rename the modified `Homeworld.exe`, then rename the `.bak` file that the patcher created back to `Homeworld.exe`. Steam's Verify Integrity of Game Files can also restore stock files, potentially undoing any patches.
+Close Homeworld, then run **`RUN_PATCHER.cmd`** and choose **2. Restore Original EXE**. The patcher locates Steam or GOG installations (or lets you browse), then:
+
+1. Verifies that the current `Homeworld.exe` has the exact supported **patched** SHA-256.
+2. Locates a timestamped `Homeworld.exe.original-2.303-*.bak` in the same directory and verifies its **original** SHA-256.
+3. Displays the selected backup and requires you to type **`RESTORE`** to proceed.
+4. Copies the original backup into a temporary file and atomically replaces `Homeworld.exe`. It verifies the restored file again and **keeps the original `.bak`**.
+
+**Nothing is reverse-patched byte by byte.** If there is no valid backup, the EXE has been modified by another tool, or you cancel, the patcher refuses to overwrite anything. If `Homeworld.exe` is already original, restore is a no-op.
+
+Steam's **Verify integrity of game files** is another option for restoring stock binaries, but it may also undo other changes.
 
 ## Testing status — v0.1.2
 
@@ -81,7 +92,7 @@ Close the game, remove or rename the modified `Homeworld.exe`, then rename the `
 ## Files
 
 - `RUN_PATCHER.cmd` — double-click launcher
-- `Patch-Homeworld1Classic.ps1` — readable patching script
+- `Patch-Homeworld1Classic.ps1` — readable install and verified-backup restore script
 - `patches.json` — 74 explicit offset/byte modifications and checksums
 - `CHANGELOG.md` — one ongoing release and development history
 - `PATCH_REFERENCE.md` — purpose, offsets, and exact bytes for all 74 patches
