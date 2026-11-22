@@ -1,7 +1,7 @@
 # HOMEWORLD 1 CLASSIC 2.303 PORTABLE PATCHER
 # Readable PowerShell; no networking, downloads, registry edits, admin rights, or extra executables.
 # Verifies the exact stock Homeworld.exe before modification, creates a backup, and checks result.
-param([string]$GameExePath, [switch]$ListDetected)
+param([string]$GameExePath, [switch]$ListDetected, [switch]$RestoreOriginal)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
@@ -176,6 +176,82 @@ function Resolve-GameExePath {
     Write-Host 'Choose Homeworld.exe manually. Only the exact supported SHA-256 will be patched.'
     return Select-GameExe
 }
+# Restore by copying the verified stock backup over the patched executable.
+# The original .bak stays untouched so the user can recover again if necessary.
+function Restore-OriginalHomeworldExe([string]$ExePath, $PatchData) {
+    $expectedOriginal = ([string]$PatchData.source_sha256).ToLowerInvariant()
+    $expectedPatched = ([string]$PatchData.patched_sha256).ToLowerInvariant()
+    $presentHash = (Get-FileHash -LiteralPath $ExePath -Algorithm SHA256).Hash.ToLowerInvariant()
+
+    if ($presentHash -eq $expectedOriginal) {
+        Write-Host 'Homeworld.exe is already the verified original. Nothing to restore.' -ForegroundColor Green
+        return
+    }
+    if ($presentHash -ne $expectedPatched) {
+        throw "Restore refused. The current Homeworld.exe is neither the supported patched EXE nor the original. Actual SHA-256: $presentHash. No files changed."
+    }
+    if (Get-Process -Name 'Homeworld' -ErrorAction SilentlyContinue) {
+        throw 'Homeworld is running. Close the game before restoring the original.'
+    }
+
+    $folder = [System.IO.Path]::GetDirectoryName($ExePath)
+    $backups = @(Get-ChildItem -LiteralPath $folder -Filter 'Homeworld.exe.original-2.303-*.bak' -File |
+        Sort-Object LastWriteTime -Descending)
+    $verifiedBackup = $null
+    foreach ($candidate in $backups) {
+        try {
+            $candidateHash = (Get-FileHash -LiteralPath $candidate.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($candidateHash -eq $expectedOriginal) {
+                $verifiedBackup = $candidate
+                break
+            }
+        } catch {
+            continue
+        }
+    }
+    if ($null -eq $verifiedBackup) {
+        throw 'Restore refused: no backup matches the exact stock 2.303 SHA-256. Nothing changed. Keep your files and use game-file verification if needed.'
+    }
+
+    Write-Host ''
+    Write-Host 'Verified original backup:' -ForegroundColor Cyan
+    Write-Host "  $($verifiedBackup.FullName)"
+    Write-Host 'The existing patched Homeworld.exe will be replaced with this verified original.'
+    Write-Host 'The .bak copy will be preserved.'
+    $confirmation = (Read-Host 'Type RESTORE to continue, or anything else to cancel').Trim()
+    if ($confirmation -cne 'RESTORE') {
+        Write-Host 'Canceled. No files changed.'
+        return
+    }
+
+    # Copy backup to a temporary file; atomically replace the EXE.
+    # Never consume or delete the original backup.
+    $temp = Join-Path $folder ('.homeworld-restore-' + [Guid]::NewGuid().ToString('N') + '.tmp')
+    try {
+        [System.IO.File]::Copy($verifiedBackup.FullName, $temp)
+        $tempHash = (Get-FileHash -LiteralPath $temp -Algorithm SHA256).Hash.ToLowerInvariant()
+        if ($tempHash -ne $expectedOriginal) {
+            throw 'Restore temporary copy failed hash verification. Game unchanged.'
+        }
+        $stillPatched = (Get-FileHash -LiteralPath $ExePath -Algorithm SHA256).Hash.ToLowerInvariant()
+        if ($stillPatched -ne $expectedPatched) {
+            throw 'Game executable changed during restore preparation. Nothing replaced.'
+        }
+        [System.IO.File]::Replace($temp, $ExePath, $null)
+    } finally {
+        if ([System.IO.File]::Exists($temp)) { [System.IO.File]::Delete($temp) }
+    }
+
+    $restoredHash = (Get-FileHash -LiteralPath $ExePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($restoredHash -ne $expectedOriginal) {
+        throw "Restore result did not match the expected original hash. The original backup remains at: $($verifiedBackup.FullName)"
+    }
+    Write-Host ''
+    Write-Host 'SUCCESS! Original Homeworld.exe restored.' -ForegroundColor Green
+    Write-Host "Original backup preserved: $($verifiedBackup.FullName)"
+    Write-Host "Restored SHA-256: $restoredHash"
+}
+
 function Select-GameExe {
     Add-Type -AssemblyName System.Windows.Forms
     $chooser = New-Object System.Windows.Forms.OpenFileDialog
@@ -210,6 +286,10 @@ try {
     if (-not (Test-Path -LiteralPath $GameExePath -PathType Leaf)) { throw "Game file not found: $GameExePath" }
     if ([System.IO.Path]::GetFileName($GameExePath) -ine 'Homeworld.exe') { throw 'Select the game file named Homeworld.exe.' }
     Write-Host "Target: $GameExePath"
+    if ($RestoreOriginal) {
+        Restore-OriginalHomeworldExe -ExePath $GameExePath -PatchData $data
+        exit 0
+    }
     $beforeHash = (Get-FileHash -LiteralPath $GameExePath -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($beforeHash -eq [string]$data.patched_sha256) {
         Write-Host 'This executable is already patched. Nothing to do.' -ForegroundColor Green
@@ -272,10 +352,10 @@ try {
     Write-Host 'SUCCESS! Homeworld 1 Classic is patched.' -ForegroundColor Green
     Write-Host "Backup: $backup"
     Write-Host "Patched SHA-256: $finalHash"
-    Write-Host 'To undo: exit the game, delete patched Homeworld.exe, and rename your .bak file to Homeworld.exe.'
+    Write-Host 'To undo: run this launcher again and select Restore Original.'
 } catch {
     Write-Host ''
-    Write-Host "PATCH NOT COMPLETED: $($_.Exception.Message)" -ForegroundColor Red
-    Write-Host 'Nothing should be replaced unless both game and patch were validated.'
+    Write-Host "OPERATION NOT COMPLETED: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host 'No replacement occurs unless the required hashes and files have been verified.'
     exit 2
 }
