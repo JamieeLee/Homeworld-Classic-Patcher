@@ -82,6 +82,87 @@ try {
     $backs = @(Get-ChildItem -LiteralPath (Split-Path $gogExe -Parent) -Filter '*.bak')
     if ($backs.Count -ne 0) { throw 'Unsupported fake EXE generated an unexpected backup.' }
     Write-Host 'PASS: Unrecognized Homeworld.exe refused with no mutation or backup.'
+    # Restore tests use synthetic game bytes and a synthetic local manifest.
+    # The published patches.json and the real game's executable are never modified.
+    $restoreKit = Join-Path $fixtureRoot 'restore-test-kit'
+    New-Item -ItemType Directory -Path $restoreKit -Force | Out-Null
+    $restoreScript = Join-Path $restoreKit 'Patch-Homeworld1Classic.ps1'
+    Copy-Item -LiteralPath $patcher -Destination $restoreScript
+    [byte[]]$fakeOriginal = @(1, 2, 3, 4, 5)
+    [byte[]]$fakePatched = @(8, 9, 10, 11, 12)
+    $sourceHash = Get-FileHash -LiteralPath $gogExe -Algorithm SHA256
+    $sourceHash = $sourceHash.Hash.ToLowerInvariant()
+    [IO.File]::WriteAllBytes($gogExe, $fakePatched)
+    $patchedHash = (Get-FileHash -LiteralPath $gogExe -Algorithm SHA256).Hash.ToLowerInvariant()
+
+    $fixtureManifest = [pscustomobject]@{
+        version = '2.303'
+        patch_count = 74
+        source_sha256 = $sourceHash
+        patched_sha256 = $patchedHash
+        source_size = 5
+        patches = @(1..74 | ForEach-Object {
+            [pscustomobject]@{ offset=0; old='01'; new='08'; group='dock' }
+        })
+    }
+    $fixtureManifest | ConvertTo-Json -Depth 5 |
+        Set-Content -LiteralPath (Join-Path $restoreKit 'patches.json') -Encoding UTF8
+
+    $restoreBackup = Join-Path (Split-Path $gogExe -Parent) 'Homeworld.exe.original-2.303-20261122-000000-12345678.bak'
+
+    # No usable backup: fail safely without modifying the patched EXE.
+    $savedPref = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        'RESTORE' | & powershell.exe -NoProfile -File $restoreScript -GameExePath $gogExe -RestoreOriginal *> $null
+        $missingBackupCode = $LASTEXITCODE
+    } finally { $ErrorActionPreference = $savedPref }
+    if ($missingBackupCode -ne 2) { throw "Missing-backup restore did not fail (code: $missingBackupCode)." }
+    if ((Get-FileHash -LiteralPath $gogExe -Algorithm SHA256).Hash.ToLowerInvariant() -ne $patchedHash) {
+        throw 'Restore modified the game despite missing backup.'
+    }
+
+    # A corrupt backup must never be used.
+    [IO.File]::WriteAllBytes($restoreBackup, [byte[]](99, 98, 97))
+    $savedPref = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        'RESTORE' | & powershell.exe -NoProfile -File $restoreScript -GameExePath $gogExe -RestoreOriginal *> $null
+        $invalidBackupCode = $LASTEXITCODE
+    } finally { $ErrorActionPreference = $savedPref }
+    if ($invalidBackupCode -ne 2) { throw "Invalid-backup restore did not fail (code: $invalidBackupCode)." }
+    if ((Get-FileHash -LiteralPath $gogExe -Algorithm SHA256).Hash.ToLowerInvariant() -ne $patchedHash) {
+        throw 'Restore used an invalid backup.'
+    }
+    Write-Host 'PASS: Missing and corrupt backups were rejected safely.'
+
+    [IO.File]::WriteAllBytes($restoreBackup, $fakeOriginal)
+    # User cancellation leaves both EXE and backup intact.
+    'NO' | & powershell.exe -NoProfile -File $restoreScript -GameExePath $gogExe -RestoreOriginal *> $null
+    if ($LASTEXITCODE -ne 0) { throw 'Cancel operation failed.' }
+    if ((Get-FileHash -LiteralPath $gogExe -Algorithm SHA256).Hash.ToLowerInvariant() -ne $patchedHash) {
+        throw 'Restore ignored a cancellation.'
+    }
+
+    # Explicit consent restores original content, preserving the source backup.
+    'RESTORE' | & powershell.exe -NoProfile -File $restoreScript -GameExePath $gogExe -RestoreOriginal *> $null
+    if ($LASTEXITCODE -ne 0) { throw 'Restore operation failed.' }
+    if ((Get-FileHash -LiteralPath $gogExe -Algorithm SHA256).Hash.ToLowerInvariant() -ne $sourceHash) {
+        throw 'Restored EXE does not match the original.'
+    }
+    if ((Get-FileHash -LiteralPath $restoreBackup -Algorithm SHA256).Hash.ToLowerInvariant() -ne $sourceHash) {
+        throw 'Restore removed or modified the original backup.'
+    }
+    Write-Host 'PASS: Cancel and verified original EXE restore; original backup preserved.'
+
+    # Repeating restore with an already-original EXE does not overwrite anything.
+    & powershell.exe -NoProfile -File $restoreScript -GameExePath $gogExe -RestoreOriginal *> $null
+    if ($LASTEXITCODE -ne 0 -or
+        (Get-FileHash -LiteralPath $gogExe -Algorithm SHA256).Hash.ToLowerInvariant() -ne $sourceHash) {
+        throw 'Restore was not idempotent.'
+    }
+    Write-Host 'PASS: Already-original EXE is an unchanged no-op.'
+
     # The last native process intentionally exited 2; do not leak that into the CI shell.
     $global:LASTEXITCODE = 0
 } finally {
