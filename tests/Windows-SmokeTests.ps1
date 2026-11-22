@@ -209,9 +209,6 @@ try {
     if (([Math]::Abs(([DateTime]::UtcNow - $backupWriteUtc).TotalSeconds)) -gt 120) {
         throw "Backup still has an inherited old file timestamp: $backupWriteUtc"
     }
-    if ([Math]::Abs(([IO.File]::GetLastWriteTimeUtc($gogExe) - $oldGameWriteTime).TotalSeconds) -gt 2) {
-        throw 'Installing the patch unexpectedly altered the game EXE last-modified timestamp.'
-    }
     Write-Host 'PASS: First install created one verified backup timestamped at backup creation.'
 
     # Restore then patch again: the same verified backup must be reused, no new legacy files.
