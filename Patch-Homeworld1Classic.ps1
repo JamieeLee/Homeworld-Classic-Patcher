@@ -200,6 +200,16 @@ function Get-StockBackupInventory([string]$Folder, [string]$ExpectedHash) {
     }
     return $items
 }
+# The stock EXE may have an old LastWriteTime from its original installation.
+# Stamp only a newly created, hash-verified backup with the time it was saved.
+function Set-VerifiedBackupTimestamp([string]$BackupPath, [string]$ExpectedHash) {
+    $hash = (Get-FileHash -LiteralPath $BackupPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($hash -ne $ExpectedHash) {
+        throw "Backup timestamp not changed: SHA-256 verification failed for $BackupPath"
+    }
+    [System.IO.File]::SetLastWriteTimeUtc($BackupPath, [DateTime]::UtcNow)
+}
+
 function Ensure-StockBackup([string]$ExePath, [string]$ExpectedHash) {
     $folder = [System.IO.Path]::GetDirectoryName($ExePath)
     $canonical = Join-Path $folder 'Homeworld.exe.original-2.303.bak'
@@ -223,6 +233,7 @@ function Ensure-StockBackup([string]$ExePath, [string]$ExpectedHash) {
     if ((Get-FileHash -LiteralPath $canonical -Algorithm SHA256).Hash.ToLowerInvariant() -ne $ExpectedHash) {
         throw "New backup did not verify. Stop here and inspect: $canonical"
     }
+    Set-VerifiedBackupTimestamp -BackupPath $canonical -ExpectedHash $ExpectedHash
     return $canonical
 }
 function Clean-StockBackupDuplicates([string]$ExePath, $PatchData) {
@@ -257,11 +268,18 @@ function Clean-StockBackupDuplicates([string]$ExePath, $PatchData) {
         return
     }
     # Preserve a verified canonical copy BEFORE deleting any legacy file.
+    $createdCanonical = $false
     if (-not (Test-Path -LiteralPath $canonical)) {
         [System.IO.File]::Copy($legacyValid[0].File.FullName, $canonical, $false)
+        $createdCanonical = $true
     }
     if ((Get-FileHash -LiteralPath $canonical -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) {
         throw 'Canonical backup failed verification. No older backups were deleted.'
+    }
+    # The new copy should show when cleanup saved it, not the old game's build date.
+    # An existing canonical backup keeps its original backup timestamp.
+    if ($createdCanonical) {
+        Set-VerifiedBackupTimestamp -BackupPath $canonical -ExpectedHash $expected
     }
     $removed = 0
     foreach ($item in $legacyValid) {
