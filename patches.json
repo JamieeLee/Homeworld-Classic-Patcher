@@ -1,0 +1,455 @@
+{
+  "game": "Homeworld 1 Classic, bundled with Homeworld Remastered Collection",
+  "version": "2.303",
+  "source_file_name": "Homeworld.exe",
+  "source_size": 3591168,
+  "source_sha256": "421c114e832c56bd1994fe97c342969ef69881bb74399e67bef979c6923df381",
+  "patched_sha256": "166c3a23a0eeb5789823602b2571be98ae926a9447376c4b843ac0d1179884fb",
+  "patch_count": 74,
+  "patches": [
+    {
+      "offset": 93773,
+      "old": "F30F2CC2",
+      "new": "660F7ED0",
+      "group": "dock"
+    },
+    {
+      "offset": 93777,
+      "old": "0F57D2",
+      "new": "0F1F00",
+      "group": "dock"
+    },
+    {
+      "offset": 93784,
+      "old": "99",
+      "new": "90",
+      "group": "dock"
+    },
+    {
+      "offset": 93789,
+      "old": "33C2",
+      "new": "D1E0",
+      "group": "dock"
+    },
+    {
+      "offset": 93797,
+      "old": "2BC2",
+      "new": "D1E8",
+      "group": "dock"
+    },
+    {
+      "offset": 93811,
+      "old": "F30F2AD0",
+      "new": "660F6ED0",
+      "group": "dock"
+    },
+    {
+      "offset": 93831,
+      "old": "F30F2CC1",
+      "new": "660F7EC8",
+      "group": "dock"
+    },
+    {
+      "offset": 93835,
+      "old": "9933C22BC2",
+      "new": "25FFFFFF7F",
+      "group": "dock"
+    },
+    {
+      "offset": 93840,
+      "old": "F30F2AC0",
+      "new": "660F6EC0",
+      "group": "dock"
+    },
+    {
+      "offset": 93844,
+      "old": "F30F2CC5",
+      "new": "660F7EE8",
+      "group": "dock"
+    },
+    {
+      "offset": 93853,
+      "old": "9933C22BC2",
+      "new": "25FFFFFF7F",
+      "group": "dock"
+    },
+    {
+      "offset": 93865,
+      "old": "F30F2AC0",
+      "new": "660F6EC0",
+      "group": "dock"
+    },
+    {
+      "offset": 92824,
+      "old": "F30F2CC1",
+      "new": "660F7EC8",
+      "group": "dock"
+    },
+    {
+      "offset": 92837,
+      "old": "9933C22BC2",
+      "new": "25FFFFFF7F",
+      "group": "dock"
+    },
+    {
+      "offset": 92859,
+      "old": "0F5BDB",
+      "new": "0F1F00",
+      "group": "dock"
+    },
+    {
+      "offset": 92871,
+      "old": "F30F2CC1",
+      "new": "660F7EC8",
+      "group": "dock"
+    },
+    {
+      "offset": 92883,
+      "old": "99",
+      "new": "90",
+      "group": "dock"
+    },
+    {
+      "offset": 92884,
+      "old": "33C2",
+      "new": "D1E0",
+      "group": "dock"
+    },
+    {
+      "offset": 92890,
+      "old": "2BC2",
+      "new": "D1E8",
+      "group": "dock"
+    },
+    {
+      "offset": 92896,
+      "old": "0F5BC0",
+      "new": "0F1F00",
+      "group": "dock"
+    },
+    {
+      "offset": 92940,
+      "old": "F30F2CC1",
+      "new": "660F7EC8",
+      "group": "dock"
+    },
+    {
+      "offset": 92947,
+      "old": "9933C22BC2",
+      "new": "25FFFFFF7F",
+      "group": "dock"
+    },
+    {
+      "offset": 92956,
+      "old": "0F5BC0",
+      "new": "0F1F00",
+      "group": "dock"
+    },
+    {
+      "offset": 93021,
+      "old": "F30F2CC1",
+      "new": "660F7EC8",
+      "group": "dock"
+    },
+    {
+      "offset": 93036,
+      "old": "9933C22BC2",
+      "new": "25FFFFFF7F",
+      "group": "dock"
+    },
+    {
+      "offset": 93045,
+      "old": "0F5BD2",
+      "new": "0F1F00",
+      "group": "dock"
+    },
+    {
+      "offset": 93072,
+      "old": "F30F2CC1",
+      "new": "660F7EC8",
+      "group": "dock"
+    },
+    {
+      "offset": 93084,
+      "old": "99",
+      "new": "90",
+      "group": "dock"
+    },
+    {
+      "offset": 93085,
+      "old": "33C2",
+      "new": "D1E0",
+      "group": "dock"
+    },
+    {
+      "offset": 93091,
+      "old": "2BC2",
+      "new": "D1E8",
+      "group": "dock"
+    },
+    {
+      "offset": 93097,
+      "old": "0F5BC0",
+      "new": "0F1F00",
+      "group": "dock"
+    },
+    {
+      "offset": 93140,
+      "old": "F30F2CC1",
+      "new": "660F7EC8",
+      "group": "dock"
+    },
+    {
+      "offset": 93152,
+      "old": "9933C22BC2",
+      "new": "25FFFFFF7F",
+      "group": "dock"
+    },
+    {
+      "offset": 93161,
+      "old": "0F5BC0",
+      "new": "0F1F00",
+      "group": "dock"
+    },
+    {
+      "offset": 89201,
+      "old": "F30F2CC0",
+      "new": "660F7EC0",
+      "group": "full"
+    },
+    {
+      "offset": 89209,
+      "old": "99",
+      "new": "90",
+      "group": "full"
+    },
+    {
+      "offset": 89212,
+      "old": "33F2",
+      "new": "D1E6",
+      "group": "full"
+    },
+    {
+      "offset": 89214,
+      "old": "2BF2",
+      "new": "D1EE",
+      "group": "full"
+    },
+    {
+      "offset": 89244,
+      "old": "0F5BD2",
+      "new": "0F1F00",
+      "group": "full"
+    },
+    {
+      "offset": 90812,
+      "old": "F30F2CC1",
+      "new": "660F7EC8",
+      "group": "full"
+    },
+    {
+      "offset": 90822,
+      "old": "99",
+      "new": "90",
+      "group": "full"
+    },
+    {
+      "offset": 90825,
+      "old": "33F2",
+      "new": "D1E6",
+      "group": "full"
+    },
+    {
+      "offset": 90827,
+      "old": "2BF2",
+      "new": "D1EE",
+      "group": "full"
+    },
+    {
+      "offset": 90833,
+      "old": "0F5BC9",
+      "new": "0F1F00",
+      "group": "full"
+    },
+    {
+      "offset": 94609,
+      "old": "F30F2CC0",
+      "new": "660F7EC0",
+      "group": "full"
+    },
+    {
+      "offset": 94623,
+      "old": "9933C22BC2",
+      "new": "25FFFFFF7F",
+      "group": "full"
+    },
+    {
+      "offset": 94632,
+      "old": "0F5BD2",
+      "new": "0F1F00",
+      "group": "full"
+    },
+    {
+      "offset": 110231,
+      "old": "F30F2CC5",
+      "new": "660F7EE8",
+      "group": "full"
+    },
+    {
+      "offset": 110235,
+      "old": "9933C22BC2",
+      "new": "25FFFFFF7F",
+      "group": "full"
+    },
+    {
+      "offset": 110247,
+      "old": "0F5BC0",
+      "new": "0F1F00",
+      "group": "full"
+    },
+    {
+      "offset": 267462,
+      "old": "F30F2CC0",
+      "new": "660F7EC0",
+      "group": "full"
+    },
+    {
+      "offset": 267466,
+      "old": "9933C22BC2",
+      "new": "25FFFFFF7F",
+      "group": "full"
+    },
+    {
+      "offset": 267471,
+      "old": "F30F2AD0",
+      "new": "660F6ED0",
+      "group": "full"
+    },
+    {
+      "offset": 777759,
+      "old": "F30F2CC1",
+      "new": "660F7EC8",
+      "group": "full"
+    },
+    {
+      "offset": 777763,
+      "old": "9933C22BC2",
+      "new": "25FFFFFF7F",
+      "group": "full"
+    },
+    {
+      "offset": 777772,
+      "old": "0F5BDB",
+      "new": "0F1F00",
+      "group": "full"
+    },
+    {
+      "offset": 171641,
+      "old": "660F6E150C1D6D00660F6E0DC02C7D000F5BC9A1549C73005683EC088BF10F5BD2660F6E1DC42C7D00F30F5ECA0F5BDBF30F5C0D64E66600F30F106838F30F10601C0F28C5F30F5C6010F30F114C2434660F6E0D081D6D000F5BC9F30F59ECF30F5ED9F30F5ECAF30F5C1D64E66600F30F105020F30F5C5014F30F1164241CF30F59D9",
+      "new": "F30F2A150C1D6D00F30F2A0DC02C7D00A1549C73005683EC088BF1F30F2A1DC42C7D00F30F5ECAF30F5C0D64E66600F30F106838F30F10601C0F28C5F30F5C6010F30F114C2434F30F2A0D081D6D00F30F59ECF30F5ED9F30F5ECAF30F114C240CF30F5C1D64E66600F30F105020F30F5C5014F30F1164241CF30F59D9660F1F440000",
+      "group": "video"
+    },
+    {
+      "offset": 172011,
+      "old": "F30F100DFCE66600",
+      "new": "F30F104C24046690",
+      "group": "video"
+    },
+    {
+      "offset": 2543200,
+      "old": "48E1FA3E",
+      "new": "DA40273F",
+      "group": "video"
+    },
+    {
+      "offset": 3362616,
+      "old": "7D3A853A8D3A9E3AAD3ACD3AE43AEF3B",
+      "new": "7D3A853A8A3A983AA43AC43ADE3A0000",
+      "group": "video"
+    },
+    {
+      "offset": 2253214,
+      "old": "81FA40060000",
+      "new": "81FAFFFFFF7F",
+      "group": "video"
+    },
+    {
+      "offset": 2252811,
+      "old": "81FE000400007F3D",
+      "new": "E96D0000000F1F00",
+      "group": "video"
+    },
+    {
+      "offset": 2308337,
+      "old": "6802000080",
+      "new": "6801000080",
+      "group": "video"
+    },
+    {
+      "offset": 2308671,
+      "old": "6802000080",
+      "new": "6801000080",
+      "group": "video"
+    },
+    {
+      "offset": 2306822,
+      "old": "6802000080",
+      "new": "6801000080",
+      "group": "video"
+    },
+    {
+      "offset": 2306866,
+      "old": "6802000080",
+      "new": "6801000080",
+      "group": "video"
+    },
+    {
+      "offset": 2160452,
+      "old": "6802000080",
+      "new": "6801000080",
+      "group": "video"
+    },
+    {
+      "offset": 2948408,
+      "old": "10000000",
+      "new": "20000000",
+      "group": "video"
+    },
+    {
+      "offset": 2948360,
+      "old": "E001000080020000",
+      "new": "0000000000000000",
+      "group": "video"
+    },
+    {
+      "offset": 1848185,
+      "old": "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
+      "new": "E87203070053E8000000005B83BB88DD100000751C6A00FF93F8F20900898388DD10006A01FF93F8F20900898384DD10005BC3CCCCCCCC",
+      "group": "video"
+    },
+    {
+      "offset": 2172075,
+      "old": "E840120200",
+      "new": "E8C90EFBFF",
+      "group": "video"
+    },
+    {
+      "offset": 2252496,
+      "old": "558BEC5356576A108BF28BD9E87A1302008B4D0C8BF88B550883C404C7470C000000008937895704894F088B8B8C00000085C9750E89BB8C000000894F0C5F5E5B5DC38B410C85C0740F",
+      "new": "558BEC5356576A108BF28BD9E87A1302008BF883C4048B4D0C8B55088937895704894F088D838C0000008B0885C974103951047C067F09393177058D410CEBEA894F0C89385F5E5B5DC3",
+      "group": "video"
+    },
+    {
+      "offset": 718277,
+      "old": "E8E6171600",
+      "new": "E850691700",
+      "group": "video"
+    },
+    {
+      "offset": 2252570,
+      "old": "660F1F4400008BC88B410C85C075F789790CC7470C000000005F5E5B5DC3",
+      "new": "E80000000058DB80EDB10A00DAB0E9B10A00D99889C11A00E979AEFEFFCC",
+      "group": "video"
+    }
+  ]
+}
