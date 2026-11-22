@@ -52,7 +52,7 @@ If the executable does not match the supported version, the patcher refuses to m
 3. Double-click `RUN_PATCHER.cmd` on Windows and choose **1. Install Patch**.
 4. The patcher searches Steam libraries and GOG installation folders, labels each detected candidate **Steam** or **GOG**, shows the full `Homeworld.exe` path, and asks for `Y` confirmation. If no match is found, or you decline every path, it opens a file picker for `Homeworld1Classic\exe\Homeworld.exe`.
 5. Confirm only after its stock SHA-256 verifies. Type `YES` to patch.
-6. The patcher creates a timestamped backup beside the original file.
+6. The patcher keeps **one verified original backup** beside the game as `Homeworld.exe.original-2.303.bak`. Reinstalling after a restore reuses this backup instead of making another copy. When a backup is first created, its **Date modified** reflects the time it was saved, not the older date on the stock game file.
 
 Steam discovery reads the existing Steam registry locations, `libraryfolders.vdf`, and `appmanifest_244160.acf` (AppID `244160`). GOG discovery reads existing GOG installation registry paths and checks standard GOG/Galaxy folders on fixed drives. Detection does not change Steam or GOG settings. **Other game builds, including different CD-ROM and GOG EXEs, are refused unless they match the exact verified 2.303 SHA-256.**
 
@@ -69,16 +69,24 @@ This kit refuses unknown builds or modified files rather than guessing offsets.
 
 ## Restore the original
 
-Close Homeworld, then run **`RUN_PATCHER.cmd`** and choose **2. Restore Original EXE**. The patcher locates Steam or GOG installations (or lets you browse), then:
+Close Homeworld, then run **`RUN_PATCHER.cmd`** and choose **2. Restore Original EXE**. The patcher locates your Steam or GOG installation (or lets you browse), then:
 
-1. Verifies that the current `Homeworld.exe` has the exact supported **patched** SHA-256.
-2. Locates a timestamped `Homeworld.exe.original-2.303-*.bak` in the same directory and verifies its **original** SHA-256.
-3. Displays the selected backup and requires you to type **`RESTORE`** to proceed.
-4. Copies the original backup into a temporary file and atomically replaces `Homeworld.exe`. It verifies the restored file again and **keeps the original `.bak`**.
+1. Confirms that `Homeworld.exe` matches the exact supported **patched** SHA-256.
+2. Locates the verified `Homeworld.exe.original-2.303.bak`, or a compatible older timestamped backup if no reusable backup exists.
+3. Shows the selected backup and requires you to type **`RESTORE`**.
+4. Copies the original bytes back into `Homeworld.exe`, atomically replaces the patched file, and verifies the result. The verified original backup is **preserved**.
 
-**Nothing is reverse-patched byte by byte.** If there is no valid backup, the EXE has been modified by another tool, or you cancel, the patcher refuses to overwrite anything. If `Homeworld.exe` is already original, restore is a no-op.
+No reverse-patching of individual bytes is performed. Unknown or modified EXEs and invalid/missing backups are refused.
 
-Steam's **Verify integrity of game files** is another option for restoring stock binaries, but it may also undo other changes.
+## Clean up older backups
+
+If you patched and restored with earlier versions, your game folder may contain several files named `Homeworld.exe.original-2.303-<date>-<id>.bak`. Those files can have an older **Date modified** because they inherited the date of the stock EXE even though their names show when the backup was made.
+
+Run **`RUN_PATCHER.cmd`**, choose **3. Clean Up Backups**, and confirm by typing **`CLEAN`**. The patcher verifies the stock-file SHA-256 of each recognized backup, saves one reusable `Homeworld.exe.original-2.303.bak` with the current backup timestamp, and removes only verified duplicate files. **Unknown, altered, or unverified files remain untouched.** Declining the prompt does not change anything.
+
+Future install/restore cycles reuse the same backup and **do not keep resetting its timestamp**. Only a newly created backup gets a new **Date modified**. This housekeeping does not change game settings or patch bytes.
+
+Steam's **Verify integrity of game files** can also restore stock binaries, but it may undo other changes.
 
 ## Testing status — v0.1.2
 
