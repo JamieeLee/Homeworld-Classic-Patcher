@@ -1,18 +1,29 @@
 # Homeworld 1 Classic — Portable Patcher
 
-An **unofficial, offline, portable** patcher for **Homeworld 1 Classic build 2.303** as supplied with *Homeworld Remastered Collection*.
+An **unofficial, portable patcher for Homeworld 1 Classic build 2.303** included with *Homeworld Remastered Collection* on Steam.
 
-This utility provides a convenient, script-based way to apply the 74 byte modifications from **HW1 Classic Docking Fix + Widescreen Support**, created by **Lou the Lou**. All credit for discovering and developing the original docking, widescreen, and resolution fixes belongs to Lou the Lou. This project focuses on packaging and applying those fixes.
+## What it does
 
-Original mod: https://www.nexusmods.com/homeworldremastered/mods/10
+This patcher updates **your installed copy** of `Homeworld.exe` with 74 targeted byte changes to:
 
-> **Scope:** Homeworld **1 Classic only**. **Not** Homeworld 1 Remastered, Homeworld 2, or Homeworld 3.
+- Address unreliable **fighter and corvette docking** behavior.
+- Improve **widescreen aspect-ratio handling**.
+- Enable **higher display resolutions**, including 2560×1440, by changing resolution detection and limits.
+- Apply related movement-calculation and Windows settings-compatibility changes.
+
+It works **offline**, does not include a copy of the game, and does not require installing a separate application. Docking behavior can be intermittent, so the docking correction is still undergoing extended gameplay testing.
+
+> **Supported game:** Homeworld **1 Classic build 2.303** only. Not Homeworld 1 Remastered, Homeworld 2, Homeworld 3, or other Classic builds.
 
 ## How it works
 
-The patcher uses an included PowerShell script and `patches.json` manifest to apply the original mod's fixes directly to your installed game. Everything needed is bundled in the ZIP, so it works offline and does not distribute a copy of the game executable.
+1. **Finds the game:** Locates Steam installations, including additional Steam library folders, and shows the detected executable path for your approval. A manual file picker is available if needed.
+2. **Checks compatibility:** Verifies the original `Homeworld.exe` SHA-256 and all 74 expected byte sequences before modifying anything.
+3. **Makes a backup:** Preserves your original executable beside the game file.
+4. **Applies the patch:** Writes the byte changes to your own `Homeworld.exe`.
+5. **Verifies the result:** Checks the patched executable's SHA-256 against the expected result.
 
-Before changing anything, it verifies that `Homeworld.exe` matches the supported build using SHA-256. It then checks all 74 original byte sequences, creates a backup, applies the patches, and verifies the finished EXE against the expected SHA-256. If the executable does not match, the patcher stops without modifying it. The script and patch data are available in this repository for anyone who wants to inspect or adapt the tooling.
+If the executable does not match the supported version, the patcher refuses to modify it. All patch offsets and replacement bytes are documented in `patches.json`, and the patching logic is available in the PowerShell source.
 
 ## Installation
 
@@ -58,7 +69,9 @@ Close the game, remove or rename the modified `Homeworld.exe`, then rename the `
 
 ## Credits and attribution
 
-This is an unofficial community packaging of patches originating from the **HW1 Classic Docking Fix + Widescreen Support** project by **Lou the Lou**. No affiliation with Gearbox, Blackbird Interactive, Valve, or Nexus Mods. Homeworld and related names are trademarks of their respective owners. The game executable is **not** redistributed here.
+The underlying docking, widescreen, and resolution changes were originally researched and developed by **Lou the Lou**, creator of [HW1 Classic Docking Fix + Widescreen Support](https://www.nexusmods.com/homeworldremastered/mods/10). Credit for those fixes belongs to Lou the Lou; this repository provides a standalone patching workflow built around them.
+
+This is an unofficial community project, not affiliated with Gearbox, Blackbird Interactive, Valve, or Nexus Mods. Homeworld and related names are trademarks of their respective owners. No game executable is distributed.
 
 ## License
 
