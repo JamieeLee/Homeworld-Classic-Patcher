@@ -194,6 +194,9 @@ try {
     if (Test-Path -LiteralPath $restoreBackup) { Remove-Item -LiteralPath $restoreBackup -Force }
     $canonical = Join-Path (Split-Path $gogExe -Parent) 'Homeworld.exe.original-2.303.bak'
     if (Test-Path -LiteralPath $canonical) { throw 'Unexpected backup before first install.' }
+    # Reproduce the reported scenario: a stock game file last modified days ago.
+    $oldGameWriteTime = [DateTime]::SpecifyKind([DateTime]::Parse('2026-11-19T18:18:00'), [DateTimeKind]::Utc)
+    [IO.File]::SetLastWriteTimeUtc($gogExe, $oldGameWriteTime)
     'YES' | & powershell.exe -NoProfile -File $restoreScript -GameExePath $gogExe *> $null
     if ($LASTEXITCODE -ne 0) { throw "Initial install failed: $LASTEXITCODE" }
     if ((Get-FileHash -LiteralPath $gogExe -Algorithm SHA256).Hash.ToLowerInvariant() -ne $testPatchedHash) {
@@ -202,7 +205,14 @@ try {
     if ((Get-FileHash -LiteralPath $canonical -Algorithm SHA256).Hash.ToLowerInvariant() -ne $testStockHash) {
         throw 'Canonical backup missing or invalid after install.'
     }
-    Write-Host 'PASS: First install created one canonical verified stock backup.'
+    $backupWriteUtc = [IO.File]::GetLastWriteTimeUtc($canonical)
+    if (([Math]::Abs(([DateTime]::UtcNow - $backupWriteUtc).TotalSeconds)) -gt 120) {
+        throw "Backup still has an inherited old file timestamp: $backupWriteUtc"
+    }
+    if ([Math]::Abs(([IO.File]::GetLastWriteTimeUtc($gogExe) - $oldGameWriteTime).TotalSeconds) -gt 2) {
+        throw 'Installing the patch unexpectedly altered the game EXE last-modified timestamp.'
+    }
+    Write-Host 'PASS: First install created one verified backup timestamped at backup creation.'
 
     # Restore then patch again: the same verified backup must be reused, no new legacy files.
     'RESTORE' | & powershell.exe -NoProfile -File $restoreScript -GameExePath $gogExe -RestoreOriginal *> $null
@@ -211,6 +221,9 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Reinstall failed.' }
     if ((Get-FileHash -LiteralPath $canonical -Algorithm SHA256).Hash.ToLowerInvariant() -ne $testStockHash) {
         throw 'Canonical backup was overwritten or modified.'
+    }
+    if ([IO.File]::GetLastWriteTimeUtc($canonical) -ne $backupWriteUtc) {
+        throw 'Reinstall unexpectedly reset the existing original backup timestamp.'
     }
     $timestampBackups = @(Get-ChildItem -LiteralPath (Split-Path $gogExe -Parent) -Filter 'Homeworld.exe.original-2.303-*.bak' -File)
     if ($timestampBackups.Count -ne 0) { throw 'Repeated installation created redundant timestamped backups.' }
@@ -224,6 +237,8 @@ try {
     [IO.File]::WriteAllBytes($legacyA, $stockBytes)
     [IO.File]::WriteAllBytes($legacyB, $stockBytes)
     [IO.File]::WriteAllBytes($legacyCorrupt, [byte[]](1, 2, 3))
+    [IO.File]::SetLastWriteTimeUtc($legacyA, $oldGameWriteTime)
+    [IO.File]::SetLastWriteTimeUtc($legacyB, $oldGameWriteTime)
     Remove-Item -LiteralPath $canonical -Force
 
     # Cancellation does not create a canonical file or delete any old files.
@@ -241,6 +256,10 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Backup cleanup failed: $LASTEXITCODE" }
     if ((Get-FileHash -LiteralPath $canonical -Algorithm SHA256).Hash.ToLowerInvariant() -ne $testStockHash) {
         throw 'Cleanup did not retain a verified canonical original.'
+    }
+    $cleanedBackupTime = [IO.File]::GetLastWriteTimeUtc($canonical)
+    if (([Math]::Abs(([DateTime]::UtcNow - $cleanedBackupTime).TotalSeconds)) -gt 120) {
+        throw "Consolidated backup has stale modification time: $cleanedBackupTime"
     }
     if ((Test-Path -LiteralPath $legacyA) -or (Test-Path -LiteralPath $legacyB)) {
         throw 'Cleanup failed to remove verified legacy duplicates.'
