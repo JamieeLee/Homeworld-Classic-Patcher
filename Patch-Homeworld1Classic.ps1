@@ -28,7 +28,9 @@ function Find-SteamHomeworldExe {
         try { $reg = Get-ItemProperty -LiteralPath $regPath -ErrorAction Stop }
         catch { continue }
         foreach ($propertyName in @('SteamPath', 'InstallPath', 'SteamExe')) {
-            $value = [string]$reg.$propertyName
+            $property = $reg.PSObject.Properties[$propertyName]
+            if ($null -eq $property) { continue }
+            $value = [string]$property.Value
             if ([string]::IsNullOrWhiteSpace($value)) { continue }
             if ($propertyName -eq 'SteamExe') { $value = Split-Path -Path $value -Parent }
             if (Test-Path -LiteralPath (Join-Path $value 'steamapps') -PathType Container) {
