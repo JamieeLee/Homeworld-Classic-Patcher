@@ -4,7 +4,7 @@ An **unofficial, portable patcher for Homeworld 1 Classic build 2.303** included
 
 **Releases and project history:** [CHANGELOG.md](CHANGELOG.md) — one running log for every version.
 
-**Current published download:** [v0.1.2 pre-release](https://github.com/JamieeLee/Homeworld-Classic-Patcher/releases/tag/v0.1.2). The ZIP and checksum are attached under **Assets**; pre-releases do not appear as GitHub's latest stable release.
+**Downloads:** [GitHub Releases](https://github.com/JamieeLee/Homeworld-Classic-Patcher/releases). Open the version you want and expand **Assets** for the patcher ZIP and checksum; pre-releases don't appear as the latest stable release.
 
 ## What it does
 
