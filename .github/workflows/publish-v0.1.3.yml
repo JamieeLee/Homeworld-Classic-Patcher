@@ -1,0 +1,103 @@
+name: Validate and publish Homeworld Classic Patcher v0.1.3
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - CHANGELOG.md
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows-tests:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate PowerShell syntax
+        shell: pwsh
+        run: |
+          foreach ($file in @('Patch-Homeworld1Classic.ps1', 'tests/Windows-SmokeTests.ps1')) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file).Path, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Host $_.Message }
+              throw "PowerShell syntax invalid: $file"
+            }
+          }
+          Write-Host 'PASS: PowerShell syntax.'
+      - name: Test Steam GOG and original-file restoration
+        shell: pwsh
+        run: |
+          & .\tests\Windows-SmokeTests.ps1
+          if ($LASTEXITCODE -ne 0) { throw "Smoke tests failed: $LASTEXITCODE" }
+      - name: Verify install restore exit menu and opt-in bypass
+        shell: pwsh
+        run: |
+          $launcher = Get-Content RUN_PATCHER.cmd -Raw
+          foreach ($required in @('Install Patch','Restore Original EXE','choice /C 123', 'operation=-RestoreOriginal','powershell.exe -NoProfile -File ','choice /C YN', 'if errorlevel 2 goto MANUAL')) {
+            if (-not $launcher.Contains($required)) { throw "Missing launcher behavior: $required" }
+          }
+          Write-Host 'PASS: launcher menu and opt-in policy.'
+  validate-patches:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify all patch definitions and changelog
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, re
+          d=json.loads(pathlib.Path('patches.json').read_text(encoding='utf-8'))
+          assert d['version']=='2.303'
+          assert d['patch_count']==len(d['patches'])==74
+          assert d['source_sha256']=='421c114e832c56bd1994fe97c342969ef69881bb74399e67bef979c6923df381'
+          assert d['patched_sha256']=='166c3a23a0eeb5789823602b2571be98ae926a9447376c4b843ac0d1179884fb'
+          ranges=[]
+          doc=pathlib.Path('PATCH_REFERENCE.md').read_text(encoding='utf-8')
+          assert re.findall(r'^\|\s*(\d+)\s*\|',doc,re.M)==[str(i) for i in range(1,75)]
+          for p in d['patches']:
+            a=bytes.fromhex(p['old']); b=bytes.fromhex(p['new'])
+            assert len(a)==len(b) and len(a)>0 and 0<=p['offset']<=d['source_size']-len(a)
+            ranges.append((p['offset'],p['offset']+len(a)))
+            assert f"0x{p['offset']:X}" in doc
+          ranges.sort()
+          assert all(a[1]<=b[0] for a,b in zip(ranges,ranges[1:]))
+          assert 'Copyright (c) 2026 louthelou' in pathlib.Path('THIRD_PARTY_NOTICES.md').read_text()
+          assert '## [v0.1.3]' in pathlib.Path('CHANGELOG.md').read_text()
+          assert not pathlib.Path('RELEASE_NOTES.md').exists()
+          print('PASS: original 74 patches, source checksums, technical docs, and single changelog.')
+          PY
+  publish:
+    needs: [windows-tests, validate-patches]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract v0.1.3 release notes from the single changelog
+        run: |
+          python3 - <<'PY'
+          import pathlib,re
+          log=pathlib.Path('CHANGELOG.md').read_text(encoding='utf-8')
+          m=re.search(r'^## \[v0\.1\.3\]\([^)]+\) — (.+)$',log,re.M)
+          assert m,'No changelog entry for v0.1.3'
+          n=re.search(r'^## ',log[m.end():],re.M)
+          end=m.end()+n.start() if n else len(log)
+          title='v0.1.3 — '+m.group(1)
+          body=log[m.end():end].strip()
+          assert body,'Empty release entry'
+          pathlib.Path('release-notes.tmp.md').write_text('# '+title+'\n\n'+body+'\n',encoding='utf-8')
+          pathlib.Path('release-title.tmp.txt').write_text(title,encoding='utf-8')
+          PY
+      - name: Package and publish v0.1.3 prerelease
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if gh release view v0.1.3 >/dev/null 2>&1; then
+            echo "::error::Release v0.1.3 already exists; not modifying it."
+            exit 1
+          fi
+          zip -j -q -9 Homeworld1Classic_Reusable_Offline_Patcher_2.303.zip RUN_PATCHER.cmd Patch-Homeworld1Classic.ps1 patches.json README.md CHANGELOG.md PATCH_REFERENCE.md THIRD_PARTY_NOTICES.md LICENSE
+          sha256sum Homeworld1Classic_Reusable_Offline_Patcher_2.303.zip > SHA256SUMS.txt
+          gh release create v0.1.3 Homeworld1Classic_Reusable_Offline_Patcher_2.303.zip SHA256SUMS.txt --title "$(cat release-title.tmp.txt)" --target "$GITHUB_SHA" --notes-file release-notes.tmp.md --prerelease
