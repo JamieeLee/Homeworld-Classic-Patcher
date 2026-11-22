@@ -1,7 +1,7 @@
 # HOMEWORLD 1 CLASSIC 2.303 PORTABLE PATCHER
 # Readable PowerShell; no networking, downloads, registry edits, admin rights, or extra executables.
 # Verifies the exact stock Homeworld.exe before modification, creates a backup, and checks result.
-param([string]$GameExePath, [switch]$ListDetected, [switch]$RestoreOriginal)
+param([string]$GameExePath, [switch]$ListDetected, [switch]$RestoreOriginal, [switch]$CleanBackups)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
@@ -176,6 +176,112 @@ function Resolve-GameExePath {
     Write-Host 'Choose Homeworld.exe manually. Only the exact supported SHA-256 will be patched.'
     return Select-GameExe
 }
+# Use one stable, verified backup rather than accumulating timestamped files.
+# Legacy timestamped backups are recognized, but never deleted without explicit consent.
+function Get-StockBackupInventory([string]$Folder, [string]$ExpectedHash) {
+    $items = @()
+    foreach ($candidate in @(Get-ChildItem -LiteralPath $Folder -Filter 'Homeworld.exe.original-2.303*.bak' -File)) {
+        $isCanonical = $candidate.Name -ieq 'Homeworld.exe.original-2.303.bak'
+        if (-not $isCanonical -and
+            $candidate.Name -notmatch '(?i)^Homeworld\.exe\.original-2\.303-\d{8}-\d{6}-[0-9a-f]{8}\.bak$') {
+            continue
+        }
+        # Reparse points could lead outside the selected game's directory; never use/delete them.
+        if (($candidate.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) { continue }
+        $valid = $false
+        try {
+            $valid = (Get-FileHash -LiteralPath $candidate.FullName -Algorithm SHA256).Hash.ToLowerInvariant() -eq $ExpectedHash
+        } catch { $valid = $false }
+        $items += [pscustomobject]@{
+            File = $candidate
+            Canonical = $isCanonical
+            Valid = $valid
+        }
+    }
+    return $items
+}
+function Ensure-StockBackup([string]$ExePath, [string]$ExpectedHash) {
+    $folder = [System.IO.Path]::GetDirectoryName($ExePath)
+    $canonical = Join-Path $folder 'Homeworld.exe.original-2.303.bak'
+    $backups = @(Get-StockBackupInventory -Folder $folder -ExpectedHash $ExpectedHash)
+    if (Test-Path -LiteralPath $canonical) {
+        $existing = @($backups | Where-Object { $_.Canonical -and $_.Valid })
+        if ($existing.Count -ne 1) {
+            throw "A backup already exists but is invalid or inaccessible: $canonical. Nothing was overwritten."
+        }
+        return $canonical
+    }
+    $legacy = @($backups | Where-Object { $_.Valid -and -not $_.Canonical } |
+        Sort-Object { $_.File.LastWriteTimeUtc } -Descending)
+    $backupSource = $ExePath
+    if ($legacy.Count -gt 0) { $backupSource = $legacy[0].File.FullName }
+    if ((Get-FileHash -LiteralPath $backupSource -Algorithm SHA256).Hash.ToLowerInvariant() -ne $ExpectedHash) {
+        throw 'No verified original EXE is available to preserve. Nothing changed.'
+    }
+    # No overwrite: if another process created this path, File.Copy must fail safely.
+    [System.IO.File]::Copy($backupSource, $canonical, $false)
+    if ((Get-FileHash -LiteralPath $canonical -Algorithm SHA256).Hash.ToLowerInvariant() -ne $ExpectedHash) {
+        throw "New backup did not verify. Stop here and inspect: $canonical"
+    }
+    return $canonical
+}
+function Clean-StockBackupDuplicates([string]$ExePath, $PatchData) {
+    $expected = ([string]$PatchData.source_sha256).ToLowerInvariant()
+    $current = (Get-FileHash -LiteralPath $ExePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($current -ne $expected -and $current -ne ([string]$PatchData.patched_sha256).ToLowerInvariant()) {
+        throw "Cleanup refused: selected Homeworld.exe is not a supported original or patched build. No files changed."
+    }
+    $folder = [System.IO.Path]::GetDirectoryName($ExePath)
+    $canonical = Join-Path $folder 'Homeworld.exe.original-2.303.bak'
+    $backups = @(Get-StockBackupInventory -Folder $folder -ExpectedHash $expected)
+    if ((Test-Path -LiteralPath $canonical) -and
+        @($backups | Where-Object { $_.Canonical -and $_.Valid }).Count -ne 1) {
+        throw "Backup cleanup refused because the canonical backup is invalid or inaccessible: $canonical"
+    }
+    $legacyValid = @($backups | Where-Object { $_.Valid -and -not $_.Canonical } |
+        Sort-Object { $_.File.LastWriteTimeUtc } -Descending)
+    $skipped = @($backups | Where-Object { -not $_.Valid }).Count
+    if ($legacyValid.Count -eq 0) {
+        Write-Host 'No duplicate verified original backups to clean.' -ForegroundColor Green
+        if ($skipped -gt 0) { Write-Warning "$skipped unverified backup(s) were left untouched." }
+        return
+    }
+    Write-Host ''
+    Write-Host "Found $($legacyValid.Count) older backup(s) matching the exact stock SHA-256:" -ForegroundColor Cyan
+    foreach ($item in $legacyValid) { Write-Host "  $($item.File.Name)" }
+    Write-Host "Keep one backup as: $canonical"
+    if ($skipped -gt 0) { Write-Warning "$skipped unverified backup(s) will NOT be touched." }
+    $answer = (Read-Host 'Type CLEAN to consolidate these verified copies, or anything else to cancel').Trim()
+    if ($answer -cne 'CLEAN') {
+        Write-Host 'Canceled. No backups changed.'
+        return
+    }
+    # Preserve a verified canonical copy BEFORE deleting any legacy file.
+    if (-not (Test-Path -LiteralPath $canonical)) {
+        [System.IO.File]::Copy($legacyValid[0].File.FullName, $canonical, $false)
+    }
+    if ((Get-FileHash -LiteralPath $canonical -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) {
+        throw 'Canonical backup failed verification. No older backups were deleted.'
+    }
+    $removed = 0
+    foreach ($item in $legacyValid) {
+        try {
+            # Recheck hashes and file attributes immediately before each deletion.
+            $fresh = Get-Item -LiteralPath $item.File.FullName -ErrorAction Stop
+            if (($fresh.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) { continue }
+            if ((Get-FileHash -LiteralPath $fresh.FullName -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) { continue }
+            if ((Get-FileHash -LiteralPath $canonical -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) {
+                throw 'Canonical backup changed; stopping cleanup.'
+            }
+            [System.IO.File]::Delete($fresh.FullName)
+            $removed++
+        } catch {
+            Write-Warning "Could not remove $($item.File.Name): $($_.Exception.Message)"
+        }
+    }
+    Write-Host "Cleanup complete: $removed verified duplicate(s) removed. Original backup kept: $canonical" -ForegroundColor Green
+}
+
 # Restore by copying the verified stock backup over the patched executable.
 # The original .bak stays untouched so the user can recover again if necessary.
 function Restore-OriginalHomeworldExe([string]$ExePath, $PatchData) {
@@ -195,20 +301,12 @@ function Restore-OriginalHomeworldExe([string]$ExePath, $PatchData) {
     }
 
     $folder = [System.IO.Path]::GetDirectoryName($ExePath)
-    $backups = @(Get-ChildItem -LiteralPath $folder -Filter 'Homeworld.exe.original-2.303-*.bak' -File |
-        Sort-Object LastWriteTime -Descending)
+    $inventory = @(Get-StockBackupInventory -Folder $folder -ExpectedHash $expectedOriginal)
+    $verifiedBackups = @($inventory | Where-Object { $_.Valid } |
+        Sort-Object -Property @{ Expression = 'Canonical'; Descending = $true },
+        @{ Expression = { $_.File.LastWriteTimeUtc }; Descending = $true })
     $verifiedBackup = $null
-    foreach ($candidate in $backups) {
-        try {
-            $candidateHash = (Get-FileHash -LiteralPath $candidate.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-            if ($candidateHash -eq $expectedOriginal) {
-                $verifiedBackup = $candidate
-                break
-            }
-        } catch {
-            continue
-        }
-    }
+    if ($verifiedBackups.Count -gt 0) { $verifiedBackup = $verifiedBackups[0].File }
     if ($null -eq $verifiedBackup) {
         throw 'Restore refused: no backup matches the exact stock 2.303 SHA-256. Nothing changed. Keep your files and use game-file verification if needed.'
     }
@@ -297,6 +395,10 @@ try {
         Restore-OriginalHomeworldExe -ExePath $GameExePath -PatchData $data
         exit 0
     }
+    if ($CleanBackups) {
+        Clean-StockBackupDuplicates -ExePath $GameExePath -PatchData $data
+        exit 0
+    }
     $beforeHash = (Get-FileHash -LiteralPath $GameExePath -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($beforeHash -eq [string]$data.patched_sha256) {
         Write-Host 'This executable is already patched. Nothing to do.' -ForegroundColor Green
@@ -334,32 +436,47 @@ try {
     $response = (Read-Host 'Apply patch and save an original backup? Type YES to continue').Trim()
     if ($response -cne 'YES') { Write-Host 'Canceled. No files changed.'; exit 0 }
 
-    # Atomic replace on NTFS. File.Replace creates the stock EXE backup in the same operation.
-    # Refuse to overwrite an existing backup or to modify the game on any verification failure.
+    # Keep one stable original backup. Repeated install/restore cycles reuse it.
     $folder = [System.IO.Path]::GetDirectoryName($GameExePath)
-    $stamp = [DateTime]::Now.ToString('yyyyMMdd-HHmmss')
-    $backup = Join-Path $folder ("Homeworld.exe.original-2.303-$stamp-" + [Guid]::NewGuid().ToString('N').Substring(0,8) + '.bak')
+    if (Get-Process -Name 'Homeworld' -ErrorAction SilentlyContinue) {
+        throw 'Homeworld is running. Close the game before installing the patch.'
+    }
+    $backup = Ensure-StockBackup -ExePath $GameExePath -ExpectedHash ([string]$data.source_sha256)
     $temp = Join-Path $folder ('.homeworld-patch-' + [Guid]::NewGuid().ToString('N') + '.tmp')
+    $rollback = Join-Path $folder ('.homeworld-stock-rollback-' + [Guid]::NewGuid().ToString('N') + '.tmp')
     try {
         [System.IO.File]::WriteAllBytes($temp, $edited)
         $tempHash = (Get-FileHash -LiteralPath $temp -Algorithm SHA256).Hash.ToLowerInvariant()
-        if ($tempHash -ne [string]$data.patched_sha256) { throw 'Temporary file failed verification; original was not replaced.' }
+        if ($tempHash -ne [string]$data.patched_sha256) {
+            throw 'Temporary patched EXE failed verification; original was not replaced.'
+        }
         $currentHash = (Get-FileHash -LiteralPath $GameExePath -Algorithm SHA256).Hash.ToLowerInvariant()
-        if ($currentHash -ne [string]$data.source_sha256) { throw 'Game executable changed during patch preparation. Nothing replaced.' }
-        [System.IO.File]::Replace($temp, $GameExePath, $backup)
+        if ($currentHash -ne [string]$data.source_sha256) {
+            throw 'Game executable changed during patch preparation. Nothing replaced.'
+        }
+        if ((Get-FileHash -LiteralPath $backup -Algorithm SHA256).Hash.ToLowerInvariant() -ne [string]$data.source_sha256) {
+            throw 'Original backup changed during patch preparation. Nothing replaced.'
+        }
+        # Windows requires a real rollback path for File.Replace.
+        [System.IO.File]::Replace($temp, $GameExePath, $rollback)
     } finally {
         if ([System.IO.File]::Exists($temp)) { [System.IO.File]::Delete($temp) }
     }
     $finalHash = (Get-FileHash -LiteralPath $GameExePath -Algorithm SHA256).Hash.ToLowerInvariant()
     $backupHash = (Get-FileHash -LiteralPath $backup -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($finalHash -ne [string]$data.patched_sha256 -or $backupHash -ne [string]$data.source_sha256) {
-        throw "Post-install verification failed. Stop here; restore the original using the backup: $backup"
+        throw "Post-install verification failed. Original backup: $backup; temporary rollback: $rollback"
+    }
+    if ([System.IO.File]::Exists($rollback)) {
+        try { [System.IO.File]::Delete($rollback) }
+        catch { Write-Warning "Patching succeeded, but temporary rollback could not be removed: $rollback" }
     }
     Write-Host ''
     Write-Host 'SUCCESS! Homeworld 1 Classic is patched.' -ForegroundColor Green
     Write-Host "Backup: $backup"
     Write-Host "Patched SHA-256: $finalHash"
     Write-Host 'To undo: run this launcher again and select Restore Original.'
+    Write-Host 'To remove older duplicate backups: select Clean Up Backups from the launcher.'
 } catch {
     Write-Host ''
     Write-Host "OPERATION NOT COMPLETED: $($_.Exception.Message)" -ForegroundColor Red
