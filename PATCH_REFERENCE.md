@@ -21,84 +21,97 @@ This is the technical explanation of **every byte sequence our patcher changes**
 
 These per-site descriptions are traceable to the published patch table and reasoning notes accompanying the original fixes. They are **not** a claim that every assembly branch has been independently reverse-engineered anew. See [third-party notices](THIRD_PARTY_NOTICES.md) for attribution and license.
 
+## Reading the byte changes
+
+Most of the first **56** sites are small pieces of the same floating-point correction, repeated wherever the affected game code calculates a magnitude:
+
+- `cvttss2si` converted floating-point values into integers and **discarded fractional values**. The replacement `movd` copies the exact float bit pattern instead.
+- The signed-integer `cdq / xor / sub` absolute-value sequence is removed or replaced with a bit mask (or matching shifts) that **clears the sign bit without losing the fraction**.
+- Unneeded integer-to-float conversions such as `cvtdq2ps` are removed; the corrected value stays a floating-point value.
+- Later video-related patches change rendering calculations, resolution enumeration, startup defaults, and registry-hive constants rather than implementing the docking correction.
+
+**Why multiple edits for one fix?** A compiled absolute-value expression can span several separate instructions. Each entry below addresses **one** instruction sequence at a specific file offset; the sites work together. These are functional explanations of the published patch logic, not independent proof of every game behavior. The **Purpose** column describes the local code change and why that operation contributes to the fix.
+
 ## Site-by-site changes
+
+Every row corresponds to the same numbered record in `patches.json`. The file offsets and byte strings are preserved exactly, so they can be checked against the shipped manifest.
 
 | # | Group | File offset | Bytes | Original bytes → replacement bytes | Purpose |
 | ---: | --- | ---: | ---: | --- | --- |
-| 1 | `dock` | `0x16E4D` | 4 | `F30F2CC2` → `660F7ED0` | O1 cvttss2si eax,xmm2 -> movd |
-| 2 | `dock` | `0x16E51` | 3 | `0F57D2` → `0F1F00` | O1 xorps xmm2,xmm2 (zeroing for cvtsi2ss) -> nop |
-| 3 | `dock` | `0x16E58` | 1 | `99` → `90` | O1 cdq -> nop |
-| 4 | `dock` | `0x16E5D` | 2 | `33C2` → `D1E0` | O1 xor eax,edx -> shl eax,1 |
-| 5 | `dock` | `0x16E65` | 2 | `2BC2` → `D1E8` | O1 sub eax,edx -> shr eax,1 |
-| 6 | `dock` | `0x16E73` | 4 | `F30F2AD0` → `660F6ED0` | O1 cvtsi2ss xmm2,eax -> movd |
-| 7 | `dock` | `0x16E87` | 4 | `F30F2CC1` → `660F7EC8` | O2 cvttss2si eax,xmm1 -> movd |
-| 8 | `dock` | `0x16E8B` | 5 | `9933C22BC2` → `25FFFFFF7F` | O2 cdq/xor/sub -> and eax,0x7fffffff |
-| 9 | `dock` | `0x16E90` | 4 | `F30F2AC0` → `660F6EC0` | O2 cvtsi2ss xmm0,eax -> movd |
-| 10 | `dock` | `0x16E94` | 4 | `F30F2CC5` → `660F7EE8` | O3 cvttss2si eax,xmm5 -> movd |
-| 11 | `dock` | `0x16E9D` | 5 | `9933C22BC2` → `25FFFFFF7F` | O3 cdq/xor/sub -> and eax,0x7fffffff |
-| 12 | `dock` | `0x16EA9` | 4 | `F30F2AC0` → `660F6EC0` | O3 cvtsi2ss xmm0,eax -> movd |
-| 13 | `dock` | `0x16A98` | 4 | `F30F2CC1` → `660F7EC8` | C1 cvttss2si -> movd |
-| 14 | `dock` | `0x16AA5` | 5 | `9933C22BC2` → `25FFFFFF7F` | C1 abs |
-| 15 | `dock` | `0x16ABB` | 3 | `0F5BDB` → `0F1F00` | C1 cvtdq2ps xmm3 -> nop |
-| 16 | `dock` | `0x16AC7` | 4 | `F30F2CC1` → `660F7EC8` | C2 cvttss2si -> movd |
-| 17 | `dock` | `0x16AD3` | 1 | `99` → `90` | C2 cdq -> nop |
-| 18 | `dock` | `0x16AD4` | 2 | `33C2` → `D1E0` | C2 xor -> shl |
-| 19 | `dock` | `0x16ADA` | 2 | `2BC2` → `D1E8` | C2 sub -> shr |
-| 20 | `dock` | `0x16AE0` | 3 | `0F5BC0` → `0F1F00` | C2 cvtdq2ps xmm0 -> nop |
-| 21 | `dock` | `0x16B0C` | 4 | `F30F2CC1` → `660F7EC8` | C3 cvttss2si -> movd |
-| 22 | `dock` | `0x16B13` | 5 | `9933C22BC2` → `25FFFFFF7F` | C3 abs |
-| 23 | `dock` | `0x16B1C` | 3 | `0F5BC0` → `0F1F00` | C3 cvtdq2ps xmm0 -> nop |
-| 24 | `dock` | `0x16B5D` | 4 | `F30F2CC1` → `660F7EC8` | C4 cvttss2si -> movd |
-| 25 | `dock` | `0x16B6C` | 5 | `9933C22BC2` → `25FFFFFF7F` | C4 abs |
-| 26 | `dock` | `0x16B75` | 3 | `0F5BD2` → `0F1F00` | C4 cvtdq2ps xmm2 -> nop |
-| 27 | `dock` | `0x16B90` | 4 | `F30F2CC1` → `660F7EC8` | C5 cvttss2si -> movd |
-| 28 | `dock` | `0x16B9C` | 1 | `99` → `90` | C5 cdq -> nop |
-| 29 | `dock` | `0x16B9D` | 2 | `33C2` → `D1E0` | C5 xor -> shl |
-| 30 | `dock` | `0x16BA3` | 2 | `2BC2` → `D1E8` | C5 sub -> shr |
-| 31 | `dock` | `0x16BA9` | 3 | `0F5BC0` → `0F1F00` | C5 cvtdq2ps xmm0 -> nop |
-| 32 | `dock` | `0x16BD4` | 4 | `F30F2CC1` → `660F7EC8` | C6 cvttss2si -> movd |
-| 33 | `dock` | `0x16BE0` | 5 | `9933C22BC2` → `25FFFFFF7F` | C6 abs |
-| 34 | `dock` | `0x16BE9` | 3 | `0F5BC0` → `0F1F00` | C6 cvtdq2ps xmm0 -> nop |
-| 35 | `full` | `0x15C71` | 4 | `F30F2CC0` → `660F7EC0` | A cvttss2si eax,xmm0 -> movd |
-| 36 | `full` | `0x15C79` | 1 | `99` → `90` | A cdq -> nop |
-| 37 | `full` | `0x15C7C` | 2 | `33F2` → `D1E6` | A xor esi,edx -> shl esi,1 |
-| 38 | `full` | `0x15C7E` | 2 | `2BF2` → `D1EE` | A sub esi,edx -> shr esi,1 |
-| 39 | `full` | `0x15C9C` | 3 | `0F5BD2` → `0F1F00` | A cvtdq2ps xmm2 -> nop |
-| 40 | `full` | `0x162BC` | 4 | `F30F2CC1` → `660F7EC8` | B cvttss2si eax,xmm1 -> movd |
-| 41 | `full` | `0x162C6` | 1 | `99` → `90` | B cdq -> nop |
-| 42 | `full` | `0x162C9` | 2 | `33F2` → `D1E6` | B xor esi,edx -> shl esi,1 |
-| 43 | `full` | `0x162CB` | 2 | `2BF2` → `D1EE` | B sub esi,edx -> shr esi,1 |
-| 44 | `full` | `0x162D1` | 3 | `0F5BC9` → `0F1F00` | B cvtdq2ps xmm1 -> nop |
-| 45 | `full` | `0x17191` | 4 | `F30F2CC0` → `660F7EC0` | C cvttss2si eax,xmm0 -> movd |
-| 46 | `full` | `0x1719F` | 5 | `9933C22BC2` → `25FFFFFF7F` | C cdq/xor/sub -> and eax,0x7fffffff |
-| 47 | `full` | `0x171A8` | 3 | `0F5BD2` → `0F1F00` | C cvtdq2ps xmm2 -> nop |
-| 48 | `full` | `0x1AE97` | 4 | `F30F2CC5` → `660F7EE8` | D cvttss2si eax,xmm5 -> movd |
-| 49 | `full` | `0x1AE9B` | 5 | `9933C22BC2` → `25FFFFFF7F` | D cdq/xor/sub -> and eax,0x7fffffff |
-| 50 | `full` | `0x1AEA7` | 3 | `0F5BC0` → `0F1F00` | D cvtdq2ps xmm0 -> nop |
-| 51 | `full` | `0x414C6` | 4 | `F30F2CC0` → `660F7EC0` | E cvttss2si eax,xmm0 -> movd |
-| 52 | `full` | `0x414CA` | 5 | `9933C22BC2` → `25FFFFFF7F` | E cdq/xor/sub -> and eax,0x7fffffff |
-| 53 | `full` | `0x414CF` | 4 | `F30F2AD0` → `660F6ED0` | E cvtsi2ss xmm2,eax -> movd |
-| 54 | `full` | `0xBDE1F` | 4 | `F30F2CC1` → `660F7EC8` | F cvttss2si eax,xmm1 -> movd |
-| 55 | `full` | `0xBDE23` | 5 | `9933C22BC2` → `25FFFFFF7F` | F cdq/xor/sub -> and eax,0x7fffffff |
-| 56 | `full` | `0xBDE2C` | 3 | `0F5BDB` → `0F1F00` | F cvtdq2ps xmm3 -> nop |
-| 57 | `video` | `0x29E79` | 131 | `660F6E150C1D6D00660F6E0DC02C7D000F5BC9A1549C73005683EC088BF10F5BD2660F6E1DC42C7D00F30F5ECA0F5BDBF30F5C0D64E66600F30F106838F30F10601C0F28C5F30F5C6010F30F114C2434660F6E0D081D6D000F5BC9F30F59ECF30F5ED9F30F5ECAF30F5C1D64E66600F30F105020F30F5C5014F30F1164241CF30F59D9` → `F30F2A150C1D6D00F30F2A0DC02C7D00A1549C73005683EC088BF1F30F2A1DC42C7D00F30F5ECAF30F5C0D64E66600F30F106838F30F10601C0F28C5F30F5C6010F30F114C2434F30F2A0D081D6D00F30F59ECF30F5ED9F30F5ECAF30F114C240CF30F5C1D64E66600F30F105020F30F5C5014F30F1164241CF30F59D9660F1F440000` | V1 raycast prologue: stash H/W |
-| 58 | `video` | `0x29FEB` | 8 | `F30F100DFCE66600` → `F30F104C24046690` | V1 look 1/len starts from H/W instead of 1.0 |
-| 59 | `video` | `0x26CE60` | 4 | `48E1FA3E` → `DA40273F` | V1 constant 0.49 -> 0.49/0.75 |
-| 60 | `video` | `0x334F38` | 16 | `7D3A853A8D3A9E3AAD3ACD3AE43AEF3B` → `7D3A853A8A3A983AA43AC43ADE3A0000` | V1 .reloc entries follow the moved operands |
-| 61 | `video` | `0x22619E` | 6 | `81FA40060000` → `81FAFFFFFF7F` | V2 drop the 1600-wide cap |
-| 62 | `video` | `0x22600B` | 8 | `81FE000400007F3D` → `E96D0000000F1F00` | V2 accept every enumerated mode |
-| 63 | `video` | `0x2338F1` | 5 | `6802000080` → `6801000080` | V3 utyVariablesLoad: HKLM -> HKCU |
-| 64 | `video` | `0x233A3F` | 5 | `6802000080` → `6801000080` | V3 utyVariablesSave: HKLM -> HKCU |
-| 65 | `video` | `0x233306` | 5 | `6802000080` → `6801000080` | V3 key open: HKLM -> HKCU |
-| 66 | `video` | `0x233332` | 5 | `6802000080` → `6801000080` | V3 key create: HKLM -> HKCU |
-| 67 | `video` | `0x20F744` | 5 | `6802000080` → `6801000080` | V3 CmdLine value: HKLM -> HKCU |
-| 68 | `video` | `0x2CFD38` | 4 | `10000000` → `20000000` | V4 default colour depth 32-bit |
-| 69 | `video` | `0x2CFD08` | 8 | `E001000080020000` → `0000000000000000` | V5 image defaults 640x480 -> 0 (unset) |
-| 70 | `video` | `0x1C3379` | 55 | `CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC` → `E87203070053E8000000005B83BB88DD100000751C6A00FF93F8F20900898388DD10006A01FF93F8F20900898384DD10005BC3CCCCCCCC` | V5 cave: unset size -> desktop size |
-| 71 | `video` | `0x2124AB` | 5 | `E840120200` → `E8C90EFBFF` | V5 WinMain calls the cave instead of utyVariablesLoad |
-| 72 | `video` | `0x225ED0` | 74 | `558BEC5356576A108BF28BD9E87A1302008B4D0C8BF88B550883C404C7470C000000008937895704894F088B8B8C00000085C9750E89BB8C000000894F0C5F5E5B5DC38B410C85C0740F` → `558BEC5356576A108BF28BD9E87A1302008BF883C4048B4D0C8B55088937895704894F088D838C0000008B0885C974103951047C067F09393177058D410CEBEA894F0C89385F5E5B5DC3` | V6 rinAddMode: ordered insert by height, then width |
-| 73 | `video` | `0xAF5C5` | 5 | `E8E6171600` → `E850691700` | V7 options Accept calls the aspect stub, which jumps to the renderer reload |
-| 74 | `video` | `0x225F1A` | 30 | `660F1F4400008BC88B410C85C075F789790CC7470C000000005F5E5B5DC3` → `E80000000058DB80EDB10A00DAB0E9B10A00D99889C11A00E979AEFEFFCC` | V7 stub: rndAspectRatio = width / height, then the renderer reload |
+| 1 | `dock` | `0x16E4D` | 4 | `F30F2CC2` → `660F7ED0` | **O1** (obstacle-size term in the docking-approach obstruction test): Replaces truncating float-to-integer conversion with a bit-preserving register move. Fractional floating-point values no longer become integer zero. |
+| 2 | `dock` | `0x16E51` | 3 | `0F57D2` → `0F1F00` | **O1** (obstacle-size term in the docking-approach obstruction test): Removes an SSE register clear that belonged to the integer-conversion sequence, preserving the floating-point bits for the corrected calculation. |
+| 3 | `dock` | `0x16E58` | 1 | `99` → `90` | **O1** (obstacle-size term in the docking-approach obstruction test): Removes signed-integer sign extension; it is no longer needed when calculating floating-point absolute value through bit operations. |
+| 4 | `dock` | `0x16E5D` | 2 | `33C2` → `D1E0` | **O1** (obstacle-size term in the docking-approach obstruction test): Replaces an integer-absolute-value step with a left shift, the first half of clearing the floating-point sign bit without rounding the magnitude. |
+| 5 | `dock` | `0x16E65` | 2 | `2BC2` → `D1E8` | **O1** (obstacle-size term in the docking-approach obstruction test): Replaces the remaining integer-absolute-value step with a right shift, restoring the original magnitude bits with the floating-point sign cleared. |
+| 6 | `dock` | `0x16E73` | 4 | `F30F2AD0` → `660F6ED0` | **O1** (obstacle-size term in the docking-approach obstruction test): Copies the sign-corrected bit pattern back into the floating-point register instead of numerically converting an integer into a float. |
+| 7 | `dock` | `0x16E87` | 4 | `F30F2CC1` → `660F7EC8` | **O2** (second magnitude term in the docking-approach obstruction test): Replaces truncating float-to-integer conversion with a bit-preserving register move. Fractional floating-point values no longer become integer zero. |
+| 8 | `dock` | `0x16E8B` | 5 | `9933C22BC2` → `25FFFFFF7F` | **O2** (second magnitude term in the docking-approach obstruction test): Replaces signed-integer absolute value with a mask clearing the IEEE-754 floating-point sign bit, preserving its fractional magnitude. |
+| 9 | `dock` | `0x16E90` | 4 | `F30F2AC0` → `660F6EC0` | **O2** (second magnitude term in the docking-approach obstruction test): Copies the sign-corrected bit pattern back into the floating-point register instead of numerically converting an integer into a float. |
+| 10 | `dock` | `0x16E94` | 4 | `F30F2CC5` → `660F7EE8` | **O3** (third magnitude term in the docking-approach obstruction test): Replaces truncating float-to-integer conversion with a bit-preserving register move. Fractional floating-point values no longer become integer zero. |
+| 11 | `dock` | `0x16E9D` | 5 | `9933C22BC2` → `25FFFFFF7F` | **O3** (third magnitude term in the docking-approach obstruction test): Replaces signed-integer absolute value with a mask clearing the IEEE-754 floating-point sign bit, preserving its fractional magnitude. |
+| 12 | `dock` | `0x16EA9` | 4 | `F30F2AC0` → `660F6EC0` | **O3** (third magnitude term in the docking-approach obstruction test): Copies the sign-corrected bit pattern back into the floating-point register instead of numerically converting an integer into a float. |
+| 13 | `dock` | `0x16A98` | 4 | `F30F2CC1` → `660F7EC8` | **C1** (first collision-radius component used to calculate avoidance separation): Replaces truncating float-to-integer conversion with a bit-preserving register move. Fractional floating-point values no longer become integer zero. |
+| 14 | `dock` | `0x16AA5` | 5 | `9933C22BC2` → `25FFFFFF7F` | **C1** (first collision-radius component used to calculate avoidance separation): Replaces signed-integer absolute value with a mask clearing the IEEE-754 floating-point sign bit, preserving its fractional magnitude. |
+| 15 | `dock` | `0x16ABB` | 3 | `0F5BDB` → `0F1F00` | **C1** (first collision-radius component used to calculate avoidance separation): Removes the integer-to-float vector conversion, which would reinterpret the preserved float bits as an integer and corrupt the magnitude. |
+| 16 | `dock` | `0x16AC7` | 4 | `F30F2CC1` → `660F7EC8` | **C2** (second collision-radius component used to calculate avoidance separation): Replaces truncating float-to-integer conversion with a bit-preserving register move. Fractional floating-point values no longer become integer zero. |
+| 17 | `dock` | `0x16AD3` | 1 | `99` → `90` | **C2** (second collision-radius component used to calculate avoidance separation): Removes signed-integer sign extension; it is no longer needed when calculating floating-point absolute value through bit operations. |
+| 18 | `dock` | `0x16AD4` | 2 | `33C2` → `D1E0` | **C2** (second collision-radius component used to calculate avoidance separation): Replaces an integer-absolute-value step with a left shift, the first half of clearing the floating-point sign bit without rounding the magnitude. |
+| 19 | `dock` | `0x16ADA` | 2 | `2BC2` → `D1E8` | **C2** (second collision-radius component used to calculate avoidance separation): Replaces the remaining integer-absolute-value step with a right shift, restoring the original magnitude bits with the floating-point sign cleared. |
+| 20 | `dock` | `0x16AE0` | 3 | `0F5BC0` → `0F1F00` | **C2** (second collision-radius component used to calculate avoidance separation): Removes the integer-to-float vector conversion, which would reinterpret the preserved float bits as an integer and corrupt the magnitude. |
+| 21 | `dock` | `0x16B0C` | 4 | `F30F2CC1` → `660F7EC8` | **C3** (third collision-radius component used to calculate avoidance separation): Replaces truncating float-to-integer conversion with a bit-preserving register move. Fractional floating-point values no longer become integer zero. |
+| 22 | `dock` | `0x16B13` | 5 | `9933C22BC2` → `25FFFFFF7F` | **C3** (third collision-radius component used to calculate avoidance separation): Replaces signed-integer absolute value with a mask clearing the IEEE-754 floating-point sign bit, preserving its fractional magnitude. |
+| 23 | `dock` | `0x16B1C` | 3 | `0F5BC0` → `0F1F00` | **C3** (third collision-radius component used to calculate avoidance separation): Removes the integer-to-float vector conversion, which would reinterpret the preserved float bits as an integer and corrupt the magnitude. |
+| 24 | `dock` | `0x16B5D` | 4 | `F30F2CC1` → `660F7EC8` | **C4** (fourth collision-radius component used to calculate avoidance separation): Replaces truncating float-to-integer conversion with a bit-preserving register move. Fractional floating-point values no longer become integer zero. |
+| 25 | `dock` | `0x16B6C` | 5 | `9933C22BC2` → `25FFFFFF7F` | **C4** (fourth collision-radius component used to calculate avoidance separation): Replaces signed-integer absolute value with a mask clearing the IEEE-754 floating-point sign bit, preserving its fractional magnitude. |
+| 26 | `dock` | `0x16B75` | 3 | `0F5BD2` → `0F1F00` | **C4** (fourth collision-radius component used to calculate avoidance separation): Removes the integer-to-float vector conversion, which would reinterpret the preserved float bits as an integer and corrupt the magnitude. |
+| 27 | `dock` | `0x16B90` | 4 | `F30F2CC1` → `660F7EC8` | **C5** (fifth collision-radius component used to calculate avoidance separation): Replaces truncating float-to-integer conversion with a bit-preserving register move. Fractional floating-point values no longer become integer zero. |
+| 28 | `dock` | `0x16B9C` | 1 | `99` → `90` | **C5** (fifth collision-radius component used to calculate avoidance separation): Removes signed-integer sign extension; it is no longer needed when calculating floating-point absolute value through bit operations. |
+| 29 | `dock` | `0x16B9D` | 2 | `33C2` → `D1E0` | **C5** (fifth collision-radius component used to calculate avoidance separation): Replaces an integer-absolute-value step with a left shift, the first half of clearing the floating-point sign bit without rounding the magnitude. |
+| 30 | `dock` | `0x16BA3` | 2 | `2BC2` → `D1E8` | **C5** (fifth collision-radius component used to calculate avoidance separation): Replaces the remaining integer-absolute-value step with a right shift, restoring the original magnitude bits with the floating-point sign cleared. |
+| 31 | `dock` | `0x16BA9` | 3 | `0F5BC0` → `0F1F00` | **C5** (fifth collision-radius component used to calculate avoidance separation): Removes the integer-to-float vector conversion, which would reinterpret the preserved float bits as an integer and corrupt the magnitude. |
+| 32 | `dock` | `0x16BD4` | 4 | `F30F2CC1` → `660F7EC8` | **C6** (sixth collision-radius component used to calculate avoidance separation): Replaces truncating float-to-integer conversion with a bit-preserving register move. Fractional floating-point values no longer become integer zero. |
+| 33 | `dock` | `0x16BE0` | 5 | `9933C22BC2` → `25FFFFFF7F` | **C6** (sixth collision-radius component used to calculate avoidance separation): Replaces signed-integer absolute value with a mask clearing the IEEE-754 floating-point sign bit, preserving its fractional magnitude. |
+| 34 | `dock` | `0x16BE9` | 3 | `0F5BC0` → `0F1F00` | **C6** (sixth collision-radius component used to calculate avoidance separation): Removes the integer-to-float vector conversion, which would reinterpret the preserved float bits as an integer and corrupt the magnitude. |
+| 35 | `full` | `0x15C71` | 4 | `F30F2CC0` → `660F7EC0` | **A** (vertical distance remaining between a ship and its destination): Replaces truncating float-to-integer conversion with a bit-preserving register move. Fractional floating-point values no longer become integer zero. |
+| 36 | `full` | `0x15C79` | 1 | `99` → `90` | **A** (vertical distance remaining between a ship and its destination): Removes signed-integer sign extension; it is no longer needed when calculating floating-point absolute value through bit operations. |
+| 37 | `full` | `0x15C7C` | 2 | `33F2` → `D1E6` | **A** (vertical distance remaining between a ship and its destination): Replaces an integer-absolute-value step with a left shift, the first half of clearing the floating-point sign bit without rounding the magnitude. |
+| 38 | `full` | `0x15C7E` | 2 | `2BF2` → `D1EE` | **A** (vertical distance remaining between a ship and its destination): Replaces the remaining integer-absolute-value step with a right shift, restoring the original magnitude bits with the floating-point sign cleared. |
+| 39 | `full` | `0x15C9C` | 3 | `0F5BD2` → `0F1F00` | **A** (vertical distance remaining between a ship and its destination): Removes the integer-to-float vector conversion, which would reinterpret the preserved float bits as an integer and corrupt the magnitude. |
+| 40 | `full` | `0x162BC` | 4 | `F30F2CC1` → `660F7EC8` | **B** (distance threshold used to decide whether an obstacle should be considered): Replaces truncating float-to-integer conversion with a bit-preserving register move. Fractional floating-point values no longer become integer zero. |
+| 41 | `full` | `0x162C6` | 1 | `99` → `90` | **B** (distance threshold used to decide whether an obstacle should be considered): Removes signed-integer sign extension; it is no longer needed when calculating floating-point absolute value through bit operations. |
+| 42 | `full` | `0x162C9` | 2 | `33F2` → `D1E6` | **B** (distance threshold used to decide whether an obstacle should be considered): Replaces an integer-absolute-value step with a left shift, the first half of clearing the floating-point sign bit without rounding the magnitude. |
+| 43 | `full` | `0x162CB` | 2 | `2BF2` → `D1EE` | **B** (distance threshold used to decide whether an obstacle should be considered): Replaces the remaining integer-absolute-value step with a right shift, restoring the original magnitude bits with the floating-point sign cleared. |
+| 44 | `full` | `0x162D1` | 3 | `0F5BC9` → `0F1F00` | **B** (distance threshold used to decide whether an obstacle should be considered): Removes the integer-to-float vector conversion, which would reinterpret the preserved float bits as an integer and corrupt the magnitude. |
+| 45 | `full` | `0x17191` | 4 | `F30F2CC0` → `660F7EC0` | **C** (fractional descent-pitch term in the ship's avoidance logic): Replaces truncating float-to-integer conversion with a bit-preserving register move. Fractional floating-point values no longer become integer zero. |
+| 46 | `full` | `0x1719F` | 5 | `9933C22BC2` → `25FFFFFF7F` | **C** (fractional descent-pitch term in the ship's avoidance logic): Replaces signed-integer absolute value with a mask clearing the IEEE-754 floating-point sign bit, preserving its fractional magnitude. |
+| 47 | `full` | `0x171A8` | 3 | `0F5BD2` → `0F1F00` | **C** (fractional descent-pitch term in the ship's avoidance logic): Removes the integer-to-float vector conversion, which would reinterpret the preserved float bits as an integer and corrupt the magnitude. |
+| 48 | `full` | `0x1AE97` | 4 | `F30F2CC5` → `660F7EE8` | **D** (heading dot-product magnitude used in bank-and-pitch tracking): Replaces truncating float-to-integer conversion with a bit-preserving register move. Fractional floating-point values no longer become integer zero. |
+| 49 | `full` | `0x1AE9B` | 5 | `9933C22BC2` → `25FFFFFF7F` | **D** (heading dot-product magnitude used in bank-and-pitch tracking): Replaces signed-integer absolute value with a mask clearing the IEEE-754 floating-point sign bit, preserving its fractional magnitude. |
+| 50 | `full` | `0x1AEA7` | 3 | `0F5BC0` → `0F1F00` | **D** (heading dot-product magnitude used in bank-and-pitch tracking): Removes the integer-to-float vector conversion, which would reinterpret the preserved float bits as an integer and corrupt the magnitude. |
+| 51 | `full` | `0x414C6` | 4 | `F30F2CC0` → `660F7EC0` | **E** (cross-product magnitude used for a movement-command threshold): Replaces truncating float-to-integer conversion with a bit-preserving register move. Fractional floating-point values no longer become integer zero. |
+| 52 | `full` | `0x414CA` | 5 | `9933C22BC2` → `25FFFFFF7F` | **E** (cross-product magnitude used for a movement-command threshold): Replaces signed-integer absolute value with a mask clearing the IEEE-754 floating-point sign bit, preserving its fractional magnitude. |
+| 53 | `full` | `0x414CF` | 4 | `F30F2AD0` → `660F6ED0` | **E** (cross-product magnitude used for a movement-command threshold): Copies the sign-corrected bit pattern back into the floating-point register instead of numerically converting an integer into a float. |
+| 54 | `full` | `0xBDE1F` | 4 | `F30F2CC1` → `660F7EC8` | **F** (camera-easing difference used for smooth camera movement): Replaces truncating float-to-integer conversion with a bit-preserving register move. Fractional floating-point values no longer become integer zero. |
+| 55 | `full` | `0xBDE23` | 5 | `9933C22BC2` → `25FFFFFF7F` | **F** (camera-easing difference used for smooth camera movement): Replaces signed-integer absolute value with a mask clearing the IEEE-754 floating-point sign bit, preserving its fractional magnitude. |
+| 56 | `full` | `0xBDE2C` | 3 | `0F5BDB` → `0F1F00` | **F** (camera-easing difference used for smooth camera movement): Removes the integer-to-float vector conversion, which would reinterpret the preserved float bits as an integer and corrupt the magnitude. |
+| 57 | `video` | `0x29E79` | 131 | `660F6E150C1D6D00660F6E0DC02C7D000F5BC9A1549C73005683EC088BF10F5BD2660F6E1DC42C7D00F30F5ECA0F5BDBF30F5C0D64E66600F30F106838F30F10601C0F28C5F30F5C6010F30F114C2434660F6E0D081D6D000F5BC9F30F59ECF30F5ED9F30F5ECAF30F5C1D64E66600F30F105020F30F5C5014F30F1164241CF30F59D9` → `F30F2A150C1D6D00F30F2A0DC02C7D00A1549C73005683EC088BF1F30F2A1DC42C7D00F30F5ECAF30F5C0D64E66600F30F106838F30F10601C0F28C5F30F5C6010F30F114C2434F30F2A0D081D6D00F30F59ECF30F5ED9F30F5ECAF30F114C240CF30F5C1D64E66600F30F105020F30F5C5014F30F1164241CF30F59D9660F1F440000` | Re-encodes the cursor-to-world ray calculation to save the current height/width ratio. That extra scale lets movement orders use the actual screen aspect instead of assuming 4:3. |
+| 58 | `video` | `0x29FEB` | 8 | `F30F100DFCE66600` → `F30F104C24046690` | Uses the stored height/width ratio in ray-direction normalization rather than a fixed 1.0. This helps the movement destination align with the mouse pointer on widescreen displays. |
+| 59 | `video` | `0x26CE60` | 4 | `48E1FA3E` → `DA40273F` | Adjusts the ray-casting scale constant from 0.49 to 0.49/0.75. It complements the ratio calculations at sites 57–58 to correct the 4:3-only mapping. |
+| 60 | `video` | `0x334F38` | 16 | `7D3A853A8D3A9E3AAD3ACD3AE43AEF3B` → `7D3A853A8A3A983AA43AC43ADE3A0000` | Updates the PE relocation entries for absolute addresses moved by the rewritten ray-casting instructions. Without matching relocation records, ASLR could overwrite the wrong bytes and break movement orders. |
+| 61 | `video` | `0x22619E` | 6 | `81FA40060000` → `81FAFFFFFF7F` | Replaces the maximum enumerated display width of 1600 with a much higher limit. This allows wider modes to reach the video-mode list. |
+| 62 | `video` | `0x22600B` | 8 | `81FE000400007F3D` → `E96D0000000F1F00` | Skips the hard-coded five-resolution whitelist while retaining the subsequent device-status check. Resolutions reported by the display driver are no longer rejected just for being absent from the old list. |
+| 63 | `video` | `0x2338F1` | 5 | `6802000080` → `6801000080` | Changes the game's settings-load registry hive from HKLM to HKCU so a standard Windows user can read their own saved configuration. |
+| 64 | `video` | `0x233A3F` | 5 | `6802000080` → `6801000080` | Changes the game's settings-save registry hive from HKLM to HKCU so saving video and other settings does not require machine-wide registry write access. |
+| 65 | `video` | `0x233306` | 5 | `6802000080` → `6801000080` | Changes the game's existing-settings registry-open call to HKCU, keeping access in the current user's profile. |
+| 66 | `video` | `0x233332` | 5 | `6802000080` → `6801000080` | Changes the game's registry-key creation call to HKCU, allowing the settings key to be created without administrator privileges. |
+| 67 | `video` | `0x20F744` | 5 | `6802000080` → `6801000080` | Changes the registry hive used for a command-line-related settings value from HKLM to HKCU, consistent with the other settings operations. |
+| 68 | `video` | `0x2CFD38` | 4 | `10000000` → `20000000` | Changes the initial color-depth value from 16-bit to 32-bit, avoiding an outdated first-run graphics default. |
+| 69 | `video` | `0x2CFD08` | 8 | `E001000080020000` → `0000000000000000` | Clears the compiled-in 640×480 initial width/height values to indicate that no resolution has been chosen yet. The startup routine at sites 70–71 then supplies the desktop dimensions. |
+| 70 | `video` | `0x1C3379` | 55 | `CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC` → `E87203070053E8000000005B83BB88DD100000751C6A00FF93F8F20900898388DD10006A01FF93F8F20900898384DD10005BC3CCCCCCCC` | Uses otherwise unused executable padding for a small startup routine: load saved game settings, and if no width is set, query Windows for the current desktop width and height. It preserves needed registers. |
+| 71 | `video` | `0x2124AB` | 5 | `E840120200` → `E8C90EFBFF` | Redirects the startup settings-load call through the new routine at site 70. This makes the desktop-resolution fallback actually run during launch. |
+| 72 | `video` | `0x225ED0` | 74 | `558BEC5356576A108BF28BD9E87A1302008B4D0C8BF88B550883C404C7470C000000008937895704894F088B8B8C00000085C9750E89BB8C000000894F0C5F5E5B5DC38B410C85C0740F` → `558BEC5356576A108BF28BD9E87A1302008BF883C4048B4D0C8B55088937895704894F088D838C0000008B0885C974103951047C067F09393177058D410CEBEA894F0C89385F5E5B5DC3` | Replaces append-only display-mode insertion with ordered insertion by height and then width. This keeps the expanded list of detected video modes arranged sensibly. |
+| 73 | `video` | `0xAF5C5` | 5 | `E8E6171600` → `E850691700` | Routes the in-game Video Options confirmation through an aspect-update routine before reloading the renderer, rather than keeping the previous aspect ratio. |
+| 74 | `video` | `0x225F1A` | 30 | `660F1F4400008BC88B410C85C075F789790CC7470C000000005F5E5B5DC3` → `E80000000058DB80EDB10A00DAB0E9B10A00D99889C11A00E979AEFEFFCC` | Calculates the projection aspect from the current window width/height and then jumps to the existing renderer reload. This prevents cursor and movement-order offsets after an in-game resolution change. |
 
 ## Notes on compatibility
 
