@@ -4,6 +4,9 @@ All notable changes to the **Homeworld 1 Classic Portable Patcher** are recorded
 
 ## Unreleased
 
+### Documentation
+- Clarified the installer's exact SHA-256 checks, 74 expected original byte sequences, already-patched handling, and refusal of unsupported executables.
+
 ## [v0.1.4](https://github.com/JamieeLee/Homeworld-Classic-Patcher/releases/tag/v0.1.4) — Backup Maintenance (pre-release)
 
 ### Changed
