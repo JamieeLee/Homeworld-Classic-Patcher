@@ -1,0 +1,69 @@
+name: Validate v0.1.4 Backup Maintenance
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/verify-v0.1.4.yml
+      - CHANGELOG.md
+
+permissions:
+  contents: read
+
+jobs:
+  windows-tests:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Windows PowerShell 5.1 syntax
+        shell: powershell
+        run: |
+          foreach ($file in @('Patch-Homeworld1Classic.ps1', 'tests/Windows-SmokeTests.ps1')) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file).Path, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) { $errors | ForEach-Object { Write-Host $_.Message }; throw "Syntax failure: $file" }
+          }
+      - name: Steam GOG restore repeated-install cleanup and timestamp tests
+        shell: pwsh
+        run: |
+          & .\tests\Windows-SmokeTests.ps1
+          if ($LASTEXITCODE -ne 0) { throw "Smoke tests failed: $LASTEXITCODE" }
+      - name: Check launcher choices and no default policy bypass
+        shell: pwsh
+        run: |
+          $s = Get-Content RUN_PATCHER.cmd -Raw
+          foreach ($part in @('choice /C 1234', 'operation=-CleanBackups', 'operation=-RestoreOriginal', 'powershell.exe -NoProfile -File ', 'choice /C YN', 'if errorlevel 2 goto MANUAL')) {
+            if (-not $s.Contains($part)) { throw "Missing launcher requirement: $part" }
+          }
+          Write-Host "PASS: Menu, installation, restore, cleanup and opt-in override"
+
+  manifest-doc-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate patch definitions and single changelog
+        run: |
+          python3 - <<'PYTEST'
+          import json, pathlib, re
+          root = pathlib.Path('.')
+          d = json.loads((root/'patches.json').read_text())
+          assert d['version'] == '2.303'
+          assert d['patch_count'] == len(d['patches']) == 74
+          assert d['source_sha256'] == '421c114e832c56bd1994fe97c342969ef69881bb74399e67bef979c6923df381'
+          assert d['patched_sha256'] == '166c3a23a0eeb5789823602b2571be98ae926a9447376c4b843ac0d1179884fb'
+          ranges = []
+          doc = (root/'PATCH_REFERENCE.md').read_text()
+          assert re.findall(r'^\|\s*(\d+)\s*\|', doc, re.M) == [str(n) for n in range(1,75)]
+          for p in d['patches']:
+              a, b = bytes.fromhex(p['old']), bytes.fromhex(p['new'])
+              assert a and len(a) == len(b) and 0 <= p['offset'] <= d['source_size'] - len(a)
+              ranges.append((p['offset'],p['offset']+len(a)))
+              assert '0x'+format(p['offset'],'X') in doc
+          ranges.sort()
+          assert all(a[1]<=b[0] for a,b in zip(ranges,ranges[1:]))
+          assert 'Copyright (c) 2026 louthelou' in (root/'THIRD_PARTY_NOTICES.md').read_text()
+          assert not (root/'RELEASE_NOTES.md').exists()
+          assert '## [v0.1.4]' in (root/'CHANGELOG.md').read_text()
+          print('PASS: 74 original patch sites, MIT notice, and CHANGELOG.md')
+          PYTEST
