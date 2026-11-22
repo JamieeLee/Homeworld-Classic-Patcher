@@ -1,7 +1,7 @@
 # HOMEWORLD 1 CLASSIC 2.303 PORTABLE PATCHER
 # Readable PowerShell; no networking, downloads, registry edits, admin rights, or extra executables.
 # Verifies the exact stock Homeworld.exe before modification, creates a backup, and checks result.
-param([string]$GameExePath)
+param([string]$GameExePath, [switch]$ListDetected)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
@@ -69,17 +69,109 @@ function Find-SteamHomeworldExe {
     }
     return @($found | Select-Object -Unique)
 }
+# Only read existing GOG configuration; never change game or registry settings.
+# A candidate is accepted for patching only if its EXE matches the exact 2.303 hash.
+function Get-GogExeFromLocation([string]$Location) {
+    if ([string]::IsNullOrWhiteSpace($Location)) { return $null }
+    try {
+        $folder = [Environment]::ExpandEnvironmentVariables($Location.Trim().Trim('"'))
+        if ($folder -match '(?i)\.exe$') { $folder = Split-Path -Path $folder -Parent }
+        foreach ($relative in @(
+            'Homeworld1Classic\exe\Homeworld.exe',
+            'exe\Homeworld.exe',
+            'Homeworld.exe'
+        )) {
+            $exe = Join-Path $folder $relative
+            if (Test-Path -LiteralPath $exe -PathType Leaf) {
+                return [System.IO.Path]::GetFullPath($exe)
+            }
+        }
+    } catch { return $null }
+    return $null
+}
+function Find-GogHomeworldExe {
+    $locations = New-Object 'System.Collections.Generic.List[string]'
+
+    # GOG Galaxy and offline installers may register different roots/values.
+    foreach ($registryRoot in @(
+        'HKLM:\SOFTWARE\WOW6432Node\GOG.com\Games',
+        'HKLM:\SOFTWARE\GOG.com\Games',
+        'HKCU:\SOFTWARE\GOG.com\Games',
+        'HKCU:\SOFTWARE\WOW6432Node\GOG.com\Games'
+    )) {
+        try { $gameKeys = @(Get-ChildItem -LiteralPath $registryRoot -ErrorAction Stop) }
+        catch { continue }
+        foreach ($key in $gameKeys) {
+            try { $game = Get-ItemProperty -LiteralPath $key.PSPath -ErrorAction Stop }
+            catch { continue }
+            foreach ($field in @('path', 'workingDir', 'exe')) {
+                $property = $game.PSObject.Properties[$field]
+                if ($null -ne $property -and $property.Value -is [string] -and
+                    -not [string]::IsNullOrWhiteSpace([string]$property.Value)) {
+                    $locations.Add([string]$property.Value)
+                }
+            }
+        }
+    }
+
+    $programFilesX86 = [Environment]::GetEnvironmentVariable('ProgramFiles(x86)')
+    foreach ($programFilesRoot in @($programFilesX86, $env:ProgramFiles)) {
+        if ([string]::IsNullOrWhiteSpace($programFilesRoot)) { continue }
+        foreach ($folder in @(
+            'GOG Galaxy\Games\Homeworld Remastered Collection',
+            'GOG Galaxy\Games\Homeworld Remastered'
+        )) { $locations.Add((Join-Path $programFilesRoot $folder)) }
+    }
+
+    # Conventional GOG standalone/Galaxy folders on fixed drives.
+    foreach ($drive in [System.IO.DriveInfo]::GetDrives()) {
+        try {
+            if ($drive.DriveType -ne [System.IO.DriveType]::Fixed -or -not $drive.IsReady) { continue }
+            $driveRoot = $drive.RootDirectory.FullName
+            foreach ($folder in @(
+                'GOG Games\Homeworld Remastered Collection',
+                'GOG Games\Homeworld Remastered',
+                'Games\GOG\Homeworld Remastered Collection',
+                'Games\Homeworld Remastered Collection'
+            )) { $locations.Add((Join-Path $driveRoot $folder)) }
+        } catch { continue }
+    }
+
+    $found = @()
+    foreach ($location in @($locations | Select-Object -Unique)) {
+        $exe = Get-GogExeFromLocation $location
+        if ($null -ne $exe) { $found += $exe }
+    }
+    return @($found | Select-Object -Unique)
+}
+function Find-GameInstallations {
+    $candidates = @()
+    foreach ($exe in @(Find-SteamHomeworldExe)) {
+        $candidates += [pscustomobject]@{ Store = 'Steam'; Path = [string]$exe }
+    }
+    foreach ($exe in @(Find-GogHomeworldExe)) {
+        $candidates += [pscustomobject]@{ Store = 'GOG'; Path = [string]$exe }
+    }
+    $unique = @()
+    $seen = @{}
+    foreach ($item in $candidates) {
+        if ([string]::IsNullOrWhiteSpace($item.Path) -or $seen.ContainsKey($item.Path)) { continue }
+        $seen[$item.Path] = $true
+        $unique += $item
+    }
+    return $unique
+}
 function Resolve-GameExePath {
-    $candidates = @(Find-SteamHomeworldExe)
+    $candidates = @(Find-GameInstallations)
     if ($candidates.Count -eq 0) {
-        Write-Host 'No Steam Homeworld 1 Classic executable automatically found.' -ForegroundColor Yellow
+        Write-Host 'No Steam or GOG Homeworld 1 Classic executable automatically found.' -ForegroundColor Yellow
     }
     foreach ($candidate in $candidates) {
         Write-Host ''
-        Write-Host 'Steam installation detected:' -ForegroundColor Cyan
-        Write-Host "  $candidate"
-        $choice = (Read-Host 'Use this executable? Type Y to confirm, or N to browse/try next').Trim()
-        if ($choice -match '^(?i:y|yes)$') { return $candidate }
+        Write-Host "$($candidate.Store) installation detected:" -ForegroundColor Cyan
+        Write-Host "  $($candidate.Path)"
+        $choice = (Read-Host 'Use this executable? Type Y to confirm, or N to try the next/browse').Trim()
+        if ($choice -match '^(?i:y|yes)$') { return $candidate.Path }
     }
     Write-Host 'Choose Homeworld.exe manually. Only the exact supported SHA-256 will be patched.'
     return Select-GameExe
@@ -95,6 +187,12 @@ function Select-GameExe {
     return $chooser.FileName
 }
 try {
+    if ($ListDetected) {
+        foreach ($installation in @(Find-GameInstallations)) {
+            Write-Output "$($installation.Store)|$($installation.Path)"
+        }
+        exit 0
+    }
     Write-Host '================================================='
     Write-Host '  Homeworld 1 CLASSIC 2.303 - Portable Patch Kit'
     Write-Host '================================================='
@@ -179,5 +277,5 @@ try {
     Write-Host ''
     Write-Host "PATCH NOT COMPLETED: $($_.Exception.Message)" -ForegroundColor Red
     Write-Host 'Nothing should be replaced unless both game and patch were validated.'
-    exit 1
+    exit 2
 }
