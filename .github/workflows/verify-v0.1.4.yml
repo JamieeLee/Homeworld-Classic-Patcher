@@ -67,3 +67,43 @@ jobs:
           assert '## [v0.1.4]' in (root/'CHANGELOG.md').read_text()
           print('PASS: 74 original patch sites, MIT notice, and CHANGELOG.md')
           PYTEST
+
+  publish:
+    needs: [windows-tests, manifest-doc-tests]
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build release notes from CHANGELOG.md
+        run: |
+          python3 - <<'PYNOTES'
+          import pathlib, re
+          log = pathlib.Path('CHANGELOG.md').read_text(encoding='utf-8')
+          head = re.search(r'^## \[v0\.1\.4\]\([^)]+\) — (.+)$', log, re.M)
+          assert head, 'Missing v0.1.4 changelog entry.'
+          following = re.search(r'^## ', log[head.end():], re.M)
+          end = head.end() + following.start() if following else len(log)
+          body = log[head.end():end].strip()
+          assert body, 'Empty changelog version entry.'
+          title = 'v0.1.4 — ' + head.group(1)
+          pathlib.Path('release-notes.tmp.md').write_text('# ' + title + '\n\n' + body + '\n', encoding='utf-8')
+          pathlib.Path('release-title.tmp.txt').write_text(title, encoding='utf-8')
+          PYNOTES
+      - name: Package and publish verified v0.1.4 pre-release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if gh release view v0.1.4 >/dev/null 2>&1; then
+            echo "::error::v0.1.4 release already exists; refusing to overwrite assets."
+            exit 1
+          fi
+          zip -j -q -9 Homeworld1Classic_Reusable_Offline_Patcher_2.303.zip \
+            RUN_PATCHER.cmd Patch-Homeworld1Classic.ps1 patches.json README.md \
+            CHANGELOG.md PATCH_REFERENCE.md THIRD_PARTY_NOTICES.md LICENSE
+          sha256sum Homeworld1Classic_Reusable_Offline_Patcher_2.303.zip > SHA256SUMS.txt
+          gh release create v0.1.4 \
+            Homeworld1Classic_Reusable_Offline_Patcher_2.303.zip SHA256SUMS.txt \
+            --title "$(cat release-title.tmp.txt)" --target "$GITHUB_SHA" \
+            --notes-file release-notes.tmp.md --prerelease
