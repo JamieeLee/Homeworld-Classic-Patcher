@@ -11,10 +11,20 @@ if not "%~1"=="" goto RUN
 echo Select an action:
 echo    1. Install Patch
 echo    2. Restore Original EXE
-echo    3. Exit
-choice /C 123 /N /M "Choose [1/2/3]: "
-if errorlevel 3 exit /b 0
-if errorlevel 2 set "operation=-RestoreOriginal"
+echo    3. Clean Up Backups
+echo    4. Exit
+choice /C 1234 /N /M "Choose [1/2/3/4]: "
+if errorlevel 4 exit /b 0
+if errorlevel 3 goto CHOOSE_CLEAN
+if errorlevel 2 goto CHOOSE_RESTORE
+goto RUN
+
+:CHOOSE_CLEAN
+set "operation=-CleanBackups"
+goto RUN
+
+:CHOOSE_RESTORE
+set "operation=-RestoreOriginal"
 
 :RUN
 powershell.exe -NoProfile -File "%~dp0Patch-Homeworld1Classic.ps1" %operation% %*
