@@ -65,7 +65,7 @@ Requires the built-in Windows PowerShell, not Python. The patcher runs offline u
 | Stock HW1 Classic 2.303 `Homeworld.exe` | `421c114e832c56bd1994fe97c342969ef69881bb74399e67bef979c6923df381` |
 | Patched HW1 Classic 2.303 `Homeworld.exe` | `166c3a23a0eeb5789823602b2571be98ae926a9447376c4b843ac0d1179884fb` |
 
-This kit refuses unknown builds or modified files rather than guessing offsets.
+**Install compatibility check:** The patcher applies changes only when `Homeworld.exe` matches the **exact SHA-256 of the supported, unmodified Homeworld 1 Classic 2.303 executable**. It then confirms that the original bytes match at **all 74 documented patch offsets**, verifies the patched result against its expected SHA-256, and asks for confirmation before replacing the file. An EXE matching the known patched hash is reported as already patched and left unchanged. Any other EXE is rejected without modification.
 
 ## Restore the original
 
