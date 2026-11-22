@@ -1,16 +1,41 @@
 @echo off
-setlocal
+setlocal EnableExtensions DisableDelayedExpansion
 cd /d "%~dp0"
 title Homeworld 1 Classic 2.303 Portable Patcher
-echo This is a readable, offline PowerShell patch kit. No third-party installer.
-echo It verifies the stock Homeworld.exe and backs it up before modification.
+echo Homeworld 1 Classic - Steam and GOG
+echo We use your current PowerShell execution policy by default.
+echo The patcher verifies the exact game build and asks before changing your EXE.
 echo.
-echo PowerShell execution-policy bypass applies ONLY to this process.
-echo It does NOT change your Windows security settings permanently.
+powershell.exe -NoProfile -File "%~dp0Patch-Homeworld1Classic.ps1" %*
+set "status=%errorlevel%"
+if "%status%"=="0" goto END
+
+rem The patcher uses exit 2 for normal patch/validation errors.
+rem Exit 1 can indicate Windows prevented PowerShell from launching the script.
+if not "%status%"=="1" goto END
 echo.
+echo The script did not start successfully. If the message above mentions
+echo execution policy, Windows may have blocked the PowerShell script.
+echo.
+echo You can allow a temporary execution-policy override for THIS run only.
+echo It will not change your registry or persistent PowerShell settings.
+choice /C YN /N /M "Retry with a one-run execution-policy bypass? [Y/N]: "
+if errorlevel 2 goto MANUAL
+echo.
+echo You explicitly approved the temporary process-only override.
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Patch-Homeworld1Classic.ps1" %*
 set "status=%errorlevel%"
+goto END
+
+:MANUAL
 echo.
-if not "%status%"=="0" echo Patcher stopped. See the message above.
+echo No override was used. To handle execution policy yourself, run:
+echo    powershell.exe -NoProfile -Command "Get-ExecutionPolicy -List"
+echo You can review or change your own PowerShell settings, or unblock a
+echo downloaded script in File Properties, then run this launcher again.
+
+:END
+echo.
+if not "%status%"=="0" echo Patcher stopped with status %status%. See details above.
 pause
 exit /b %status%
