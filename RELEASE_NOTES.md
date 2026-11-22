@@ -1,21 +1,16 @@
-# v0.1.0 — Initial portable patcher (pre-release)
+# v0.1.1 — Steam auto-detection (pre-release)
 
-A transparent, offline alternative to running the original HW1 Classic fix installer.
+Improves setup of the offline Homeworld 1 Classic build 2.303 patcher.
 
-**For Homeworld 1 Classic build 2.303 only** (included in the Homeworld Remastered Collection), not Remastered or Homeworld 2/3.
+- Automatically searches Steam installation locations and alternate library folders for **Homeworld Remastered Collection** (AppID `244160`).
+- Displays the detected `Homeworld1Classic\exe\Homeworld.exe` path for explicit **Y** confirmation.
+- Falls back to a file picker if Steam is not found or its detected path is declined.
+- Retains exact stock SHA-256 verification, an original backup, post-patch verification, and all 74 byte modifications.
+- Does **not** support distinct CD-ROM builds or other versions; mismatched EXEs are refused.
+- Contains no copyrighted game EXE and no third-party installer.
 
-### Included
-- Readable `.cmd` and PowerShell patcher with no bundled game executable.
-- JSON manifest containing 74 exact byte modifications for docking and related behavior plus widescreen/resolution compatibility.
-- Stock SHA-256 check before patching, automatic backup, patched output SHA-256 verification, and refusal on unsupported/modified builds.
+**Testing:** The earlier version's patched game launched at 2560×1440. Steam auto-detection and the intermittent docking issue have not yet been comprehensively tested on user systems.
 
-### Testing status
-- All 74 patches verified against the stock 2.303 executable; independently reproduced patched SHA-256.
-- User confirmed the patched game launches at 2560×1440.
-- The intermittent docking bug has **not** yet been confirmed fixed by repeated in-game testing; release should be marked **Pre-release**.
+**Credit:** Original docking and widescreen modifications by **Lou the Lou**. This project republishes those fixes as an inspectable script-based patcher with permission reported by the maintainer.
 
-### Attribution
-Original fix work: **Lou the Lou** — https://www.nexusmods.com/homeworldremastered/mods/10. This is a separate, inspectable patching tool to apply those changes to a user's own legitimate game installation. No original game binaries included.
-
-### Install
-Download `Homeworld1Classic_Reusable_Offline_Patcher_2.303.zip`, extract, then run `RUN_PATCHER.cmd` and select `Homeworld1Classic\exe\Homeworld.exe`.
+Original mod: https://www.nexusmods.com/homeworldremastered/mods/10
