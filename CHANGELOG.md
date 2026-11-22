@@ -8,6 +8,7 @@ All notable changes to the **Homeworld 1 Classic Portable Patcher** are recorded
 - Explained **why** the executable requires each patch group: docking and collision avoidance, flight/camera calculations, resolution detection, widescreen movement orders, and Windows settings.
 - Clarified what the patcher itself reads or writes versus what the **patched game** does with its settings.
 - Linked the full 74-site technical reference from the README.
+- Expanded the technical reference with a plain-English explanation for **each of the 74 byte modifications**, including the assembly instruction's role and the game behavior it affects.
 
 ## [v0.1.2](https://github.com/JamieeLee/Homeworld-Classic-Patcher/releases/tag/v0.1.2) — Steam & GOG Auto-Detection (pre-release)
 
