@@ -15,4 +15,4 @@ The portable Homeworld 1 Classic 2.303 patcher now searches **both Steam and GOG
 - Operates offline, does not write Steam/GOG registry settings, and does not distribute a game EXE.
 
 ### Testing
-Windows fixture tests cover Steam alternate-library detection, GOG registry detection, and refusal to modify an unsupported executable. **Real-world GOG installation detection has not yet been verified**, and the intermittent docking fix still needs longer gameplay testing. This remains a **pre-release**.
+The pre-release is gated on Windows PowerShell syntax checks and Windows fixture tests covering Steam alternate-library detection, GOG registry detection, and refusal to modify an unsupported executable. The 74-patch manifest and explanatory reference are also checked for consistency. **Real-world GOG installation detection has not yet been verified**, and the intermittent docking fix still needs longer gameplay testing. This remains a **pre-release**.
