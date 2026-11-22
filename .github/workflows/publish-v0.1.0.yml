@@ -1,0 +1,56 @@
+name: Publish Homeworld Classic Patcher v0.1.0
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - RELEASE_NOTES.md
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out public patcher sources
+        uses: actions/checkout@v4
+      - name: Validate manifest structure (without distributing game files)
+        run: |
+          python3 - <<'PYVALIDATE'
+          import hashlib, json, pathlib
+          d = json.loads(pathlib.Path('patches.json').read_text(encoding='utf-8'))
+          assert d['version'] == '2.303'
+          assert d['patch_count'] == len(d['patches']) == 74
+          assert d['source_file_name'] == 'Homeworld.exe'
+          assert d['source_size'] > 0
+          for key in ('source_sha256', 'patched_sha256'):
+              assert len(d[key]) == 64 and all(c in '0123456789abcdef' for c in d[key])
+          ranges = []
+          for p in d['patches']:
+              old, new, off = bytes.fromhex(p['old']), bytes.fromhex(p['new']), p['offset']
+              assert len(old) == len(new) and len(old) > 0
+              assert 0 <= off <= d['source_size'] - len(old)
+              ranges.append((off, off + len(old)))
+          ranges.sort()
+          assert all(a[1] <= b[0] for a,b in zip(ranges, ranges[1:]))
+          print('Manifest validated: 74 nonoverlapping patches')
+          PYVALIDATE
+      - name: Package and publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view v0.1.0 >/dev/null 2>&1; then
+            echo 'Release v0.1.0 already exists; skipping.'
+            exit 0
+          fi
+          zip -j -q -9 Homeworld1Classic_Reusable_Offline_Patcher_2.303.zip \
+            RUN_PATCHER.cmd Patch-Homeworld1Classic.ps1 patches.json README.md
+          sha256sum Homeworld1Classic_Reusable_Offline_Patcher_2.303.zip > SHA256SUMS.txt
+          gh release create v0.1.0 \
+            Homeworld1Classic_Reusable_Offline_Patcher_2.303.zip SHA256SUMS.txt \
+            --title 'v0.1.0 — Homeworld 1 Classic Portable Patcher' \
+            --target "$GITHUB_SHA" \
+            --notes-file RELEASE_NOTES.md \
+            --prerelease
