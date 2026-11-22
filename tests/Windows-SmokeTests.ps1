@@ -145,8 +145,8 @@ try {
     }
 
     # Explicit consent restores original content, preserving the source backup.
-    'RESTORE' | & powershell.exe -NoProfile -File $restoreScript -GameExePath $gogExe -RestoreOriginal *> $null
-    if ($LASTEXITCODE -ne 0) { throw 'Restore operation failed.' }
+    'RESTORE' | & powershell.exe -NoProfile -File $restoreScript -GameExePath $gogExe -RestoreOriginal
+    if ($LASTEXITCODE -ne 0) { throw "Restore operation failed with exit code $LASTEXITCODE." }
     if ((Get-FileHash -LiteralPath $gogExe -Algorithm SHA256).Hash.ToLowerInvariant() -ne $sourceHash) {
         throw 'Restored EXE does not match the original.'
     }
