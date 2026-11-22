@@ -82,6 +82,8 @@ try {
     $backs = @(Get-ChildItem -LiteralPath (Split-Path $gogExe -Parent) -Filter '*.bak')
     if ($backs.Count -ne 0) { throw 'Unsupported fake EXE generated an unexpected backup.' }
     Write-Host 'PASS: Unrecognized Homeworld.exe refused with no mutation or backup.'
+    # The last native process intentionally exited 2; do not leak that into the CI shell.
+    $global:LASTEXITCODE = 0
 } finally {
     if ($priorSteamPathExists) {
         New-ItemProperty -Path $steamKey -Name SteamPath -PropertyType String -Value $priorSteamPath -Force | Out-Null
