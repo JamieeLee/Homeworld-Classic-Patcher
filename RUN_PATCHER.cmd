@@ -6,7 +6,18 @@ echo Homeworld 1 Classic - Steam and GOG
 echo We use your current PowerShell execution policy by default.
 echo The patcher verifies the exact game build and asks before changing your EXE.
 echo.
-powershell.exe -NoProfile -File "%~dp0Patch-Homeworld1Classic.ps1" %*
+set "operation="
+if not "%~1"=="" goto RUN
+echo Select an action:
+echo    1. Install Patch
+echo    2. Restore Original EXE
+echo    3. Exit
+choice /C 123 /N /M "Choose [1/2/3]: "
+if errorlevel 3 exit /b 0
+if errorlevel 2 set "operation=-RestoreOriginal"
+
+:RUN
+powershell.exe -NoProfile -File "%~dp0Patch-Homeworld1Classic.ps1" %operation% %*
 set "status=%errorlevel%"
 if "%status%"=="0" goto END
 
@@ -23,7 +34,7 @@ choice /C YN /N /M "Retry with a one-run execution-policy bypass? [Y/N]: "
 if errorlevel 2 goto MANUAL
 echo.
 echo You explicitly approved the temporary process-only override.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Patch-Homeworld1Classic.ps1" %*
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Patch-Homeworld1Classic.ps1" %operation% %*
 set "status=%errorlevel%"
 goto END
 
