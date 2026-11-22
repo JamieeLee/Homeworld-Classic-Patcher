@@ -1,6 +1,6 @@
 # Homeworld 1 Classic — Portable Patcher
 
-An **unofficial, portable patcher for Homeworld 1 Classic build 2.303** included with *Homeworld Remastered Collection* on Steam.
+An **unofficial, portable patcher for Homeworld 1 Classic build 2.303** included with *Homeworld Remastered Collection* on **Steam or GOG**.
 
 ## What it does
 
@@ -17,7 +17,7 @@ It works **offline**, does not include a copy of the game, and does not require 
 
 ## How it works
 
-1. **Finds the game:** Locates Steam installations, including additional Steam library folders, and shows the detected executable path for your approval. A manual file picker is available if needed.
+1. **Finds the game:** Searches Steam libraries and GOG installation locations, then shows the store and exact executable path for your approval. A manual file picker is available if needed.
 2. **Checks compatibility:** Verifies the original `Homeworld.exe` SHA-256 and all 74 expected byte sequences before modifying anything.
 3. **Makes a backup:** Preserves your original executable beside the game file.
 4. **Applies the patch:** Writes the byte changes to your own `Homeworld.exe`.
@@ -30,13 +30,13 @@ If the executable does not match the supported version, the patcher refuses to m
 1. Install *Homeworld Remastered Collection*, including **Homeworld 1 Classic**.
 2. Download the release ZIP and extract the entire archive into one folder.
 3. Double-click `RUN_PATCHER.cmd` on Windows.
-4. The patcher searches Steam installation paths and additional library folders for *Homeworld Remastered Collection* (AppID `244160`), shows the full detected `Homeworld.exe` path, and asks for `Y` confirmation. If it can't find the game, or you decline the proposed path, it opens a file picker for `Homeworld1Classic\exe\Homeworld.exe`.
+4. The patcher searches Steam libraries and GOG installation folders, labels each detected candidate **Steam** or **GOG**, shows the full `Homeworld.exe` path, and asks for `Y` confirmation. If no match is found, or you decline every path, it opens a file picker for `Homeworld1Classic\exe\Homeworld.exe`.
 5. Confirm only after its stock SHA-256 verifies. Type `YES` to patch.
 6. The patcher creates a timestamped backup beside the original file.
 
-Steam detection only reads existing Steam registry installation paths, `libraryfolders.vdf`, and `appmanifest_244160.acf`. It doesn't modify Steam settings. **Original CD-ROM versions aren't supported unless their EXE happens to match the exact verified 2.303 SHA-256.** Otherwise, they are safely refused.
+Steam discovery reads the existing Steam registry locations, `libraryfolders.vdf`, and `appmanifest_244160.acf` (AppID `244160`). GOG discovery reads existing GOG installation registry paths and checks standard GOG/Galaxy folders on fixed drives. Detection does not change Steam or GOG settings. **Other game builds, including different CD-ROM and GOG EXEs, are refused unless they match the exact verified 2.303 SHA-256.**
 
-Requires the built-in Windows PowerShell, not Python. The patcher runs offline using the files included in the release ZIP. PowerShell's execution-policy override is limited to the spawned process; it is not a permanent change to your system settings.
+Requires the built-in Windows PowerShell, not Python. The patcher runs offline using the files included in the release ZIP. **It uses your normal PowerShell execution policy by default.** If Windows blocks script execution, the launcher explains the situation and **asks** whether to retry with a temporary `-ExecutionPolicy Bypass` for that one run. **No bypass happens without a Y answer.** Choosing **N** leaves the policy untouched so you can address it manually. This does not change the system's persistent execution-policy settings. Organization-managed policies may prohibit an override.
 
 ## Supported hashes
 
@@ -51,13 +51,13 @@ This kit refuses unknown builds or modified files rather than guessing offsets.
 
 Close the game, remove or rename the modified `Homeworld.exe`, then rename the `.bak` file that the patcher created back to `Homeworld.exe`. Steam's Verify Integrity of Game Files can also restore stock files, potentially undoing any patches.
 
-## Testing status — v0.1.1
+## Testing status — v0.1.2
 
 - Original stock EXE and all 74 patch sites matched the expected bytes.
 - Independent recomputation of the resulting file matched the expected patched SHA-256, byte for byte.
 - User reported that the patcher launched and the patched game started at **2560×1440**.
 - **Intermittent docking bug is not yet conclusively validated over repeated gameplay runs.**
-- Steam auto-detection was added in v0.1.1 and hasn't yet been checked across multiple real Steam library configurations. Manual browsing remains available.
+- Steam detection (v0.1.1) and GOG detection (v0.1.2) are checked using synthetic Windows installation fixtures; **real GOG/Steam configurations still need additional user testing**. Manual browsing remains available.
 - The script has not been fully regression-tested across Windows installations or Steam updates.
 
 ## Files
@@ -65,6 +65,10 @@ Close the game, remove or rename the modified `Homeworld.exe`, then rename the `
 - `RUN_PATCHER.cmd` — double-click launcher
 - `Patch-Homeworld1Classic.ps1` — readable patching script
 - `patches.json` — 74 explicit offset/byte modifications and checksums
+- `PATCH_REFERENCE.md` — purpose, offsets, and exact bytes for all 74 patches
+- `THIRD_PARTY_NOTICES.md` — original source copyright and license notices
+- `LICENSE` — MIT license for this project
+- `tests/Windows-SmokeTests.ps1` — Windows fixture tests (in repository, not needed to run the patcher)
 - `README.md` — source documentation
 
 ## Credits
@@ -75,4 +79,4 @@ Original docking, widescreen, and resolution fixes: **Lou the Lou** — [HW1 Cla
 
 This unofficial community tool packages the fixes as verified byte patches that users apply to **their own** Homeworld 1 Classic executable. It is not affiliated with Gearbox, Blackbird Interactive, Valve, or Nexus Mods. Homeworld and related names are trademarks of their respective owners.
 
-Permission to distribute the patch data was confirmed by the repository maintainer. No game executable is included, and no repository-wide software license has been selected.
+The project is licensed under **MIT** (see [`LICENSE`](LICENSE)). The patch data incorporates MIT-licensed research and definitions; its original copyright and license notice are preserved in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). No game executable is included. For a complete technical breakdown, see [`PATCH_REFERENCE.md`](PATCH_REFERENCE.md).
