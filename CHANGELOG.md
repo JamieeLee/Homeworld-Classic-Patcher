@@ -8,7 +8,7 @@ All notable changes to the **Homeworld 1 Classic Portable Patcher** are recorded
 
 ### Added
 - **Restore Original EXE** in the existing `RUN_PATCHER.cmd` launcher, alongside Install Patch and Exit.
-- Verification that the current `Homeworld.exe` has the expected patched SHA-256 and that a local timestamped `.bak` matches the exact stock 2.303 SHA-256.
+- Verification that the current `Homeworld.exe` has the expected patched SHA-256 and that a local timestamped `.bak` matches the exact stock 2.303 SHA-256. When several backups exist, the newest verified original is selected.
 - Clear `RESTORE` confirmation before atomically replacing the patched executable with a copy of the verified original backup. The original backup is preserved.
 - Restoration uses the backup file directly; it does not attempt to reverse individual executable byte changes or alter Windows registry settings.
 - Safe refusal if the game is running, the EXE is not the expected patched version, or no valid backup is available; restoring an already-original EXE is a no-op.
