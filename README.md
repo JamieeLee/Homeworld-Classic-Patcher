@@ -15,6 +15,22 @@ It works **offline**, does not include a copy of the game, and does not require 
 
 > **Supported game:** Homeworld **1 Classic build 2.303** only. Not Homeworld 1 Remastered, Homeworld 2, Homeworld 3, or other Classic builds.
 
+## Why we patch these parts of the game
+
+These are **specific problems in the Classic executable**, not cosmetic changes or unrelated tweaks:
+
+| Area | What goes wrong without the patch | What our patch changes |
+| --- | --- | --- |
+| **Docking and collision avoidance** | Some floating-point absolute-value calculations were compiled using integer conversions. Small values can get truncated, preventing the AI from recognizing an obstructed approach. Fighters and corvettes may circle the Kushan Mothership instead of docking. | Restores floating-point absolute-value behavior in avoidance calculations. |
+| **Flight and camera calculations** | The same float-to-integer conversion issue occurs in other flight, movement, and camera calculations. | Corrects the affected absolute-value operations at their known locations. |
+| **Available resolutions** | The Classic video menu uses a small legacy resolution whitelist and a 1600-pixel width limit. | Removes those restrictions so the game can list resolutions reported by the display driver, including widescreen modes. |
+| **Widescreen movement orders** | The cursor-to-world calculation assumes a 4:3 display, so a ship's move destination can appear somewhere other than where you point. | Adjusts the calculation for the actual aspect ratio and updates the projection when you change resolution in-game. |
+| **Windows settings and first launch** | The game tries to store settings under the machine-wide Windows registry location, where normal users often lack write access; older defaults can also force 640×480 and 16-bit color. | Changes the **game's own** settings location to the current user's registry area, uses desktop-sized initial settings, and defaults to 32-bit color. |
+
+**What the patcher itself touches:** It reads existing Steam/GOG installation information to find the game, verifies the exact EXE, then modifies **only your selected `Homeworld.exe`** after making a backup. It does **not** write to the Windows registry. The **patched game**, however, will use `HKEY_CURRENT_USER\SOFTWARE\Sierra On-Line\Homeworld` for its settings. Old settings in the machine-wide registry location are **not automatically copied**, so you may need to choose your preferred video settings again.
+
+**See every individual change:** [`PATCH_REFERENCE.md`](PATCH_REFERENCE.md) explains all **74 file offsets**, their exact before-and-after bytes, and their technical purpose. [`patches.json`](patches.json) is the patcher's authoritative machine-readable manifest. This makes it possible to check what we're changing without trusting a vague description.
+
 ## How it works
 
 1. **Finds the game:** Searches Steam libraries and GOG installation locations, then shows the store and exact executable path for your approval. A manual file picker is available if needed.
