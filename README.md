@@ -19,9 +19,11 @@ This package contains no game executable, no bundled third-party installer, and 
 1. Install *Homeworld Remastered Collection*, including **Homeworld 1 Classic**.
 2. Download the release ZIP and extract the entire archive into one folder.
 3. Double-click `RUN_PATCHER.cmd` on Windows.
-4. Select `Homeworld1Classic\exe\Homeworld.exe` from your own game installation.
+4. The patcher searches Steam installation paths and additional library folders for *Homeworld Remastered Collection* (AppID `244160`), shows the full detected `Homeworld.exe` path, and asks for `Y` confirmation. If it can't find the game, or you decline the proposed path, it opens a file picker for `Homeworld1Classic\exe\Homeworld.exe`.
 5. Confirm only after its stock SHA-256 verifies. Type `YES` to patch.
 6. The patcher creates a timestamped backup beside the original file.
+
+Steam detection only reads existing Steam registry installation paths, `libraryfolders.vdf`, and `appmanifest_244160.acf`. It doesn't modify Steam settings. **Original CD-ROM versions aren't supported unless their EXE happens to match the exact verified 2.303 SHA-256.** Otherwise, they are safely refused.
 
 Requires the built-in Windows PowerShell, not Python. It does not need internet access or to execute the original author's installer. PowerShell's execution-policy override is limited to the spawned process; it is not a permanent change to your system settings.
 
@@ -38,12 +40,13 @@ This kit refuses unknown builds or modified files rather than guessing offsets.
 
 Close the game, remove or rename the modified `Homeworld.exe`, then rename the `.bak` file that the patcher created back to `Homeworld.exe`. Steam's Verify Integrity of Game Files can also restore stock files, potentially undoing any patches.
 
-## Testing status — v0.1.0
+## Testing status — v0.1.1
 
 - Original stock EXE and all 74 patch sites matched the expected bytes.
 - Independent recomputation of the resulting file matched the expected patched SHA-256, byte for byte.
 - User reported that the patcher launched and the patched game started at **2560×1440**.
 - **Intermittent docking bug is not yet conclusively validated over repeated gameplay runs.**
+- Steam auto-detection was added in v0.1.1 and hasn't yet been checked across multiple real Steam library configurations. Manual browsing remains available.
 - The script has not been fully regression-tested across Windows installations or Steam updates.
 
 ## Files
