@@ -49,10 +49,20 @@ try {
     # Discover via real Windows PowerShell without overriding the local execution policy.
     $found = @(& powershell.exe -NoProfile -File $patcher -ListDetected)
     if ($LASTEXITCODE -ne 0) { throw 'Detection command failed.' }
-    if ($found -notcontains ('GOG|' + $gogExe)) {
+    # Windows may normalize an 8.3 path (RUNNER~1) to its long form;
+    # compare the stable installation suffix and validate the actual target file.
+    $gogMatches = @($found | Where-Object {
+        $_.StartsWith('GOG|', [System.StringComparison]::OrdinalIgnoreCase) -and
+        $_.EndsWith('\GOG Custom\Homeworld Remastered Collection\Homeworld1Classic\exe\Homeworld.exe', [System.StringComparison]::OrdinalIgnoreCase)
+    })
+    $steamMatches = @($found | Where-Object {
+        $_.StartsWith('Steam|', [System.StringComparison]::OrdinalIgnoreCase) -and
+        $_.EndsWith('\Another Steam Library\steamapps\common\Homeworld\Homeworld1Classic\exe\Homeworld.exe', [System.StringComparison]::OrdinalIgnoreCase)
+    })
+    if ($gogMatches.Count -ne 1 -or -not (Test-Path -LiteralPath $gogMatches[0].Substring(4) -PathType Leaf)) {
         throw ("GOG fixture was not found. Detected: " + ($found -join '; '))
     }
-    if ($found -notcontains ('Steam|' + $steamExe)) {
+    if ($steamMatches.Count -ne 1 -or -not (Test-Path -LiteralPath $steamMatches[0].Substring(6) -PathType Leaf)) {
         throw ("Steam fixture was not found. Detected: " + ($found -join '; '))
     }
     Write-Host 'PASS: GOG registry path and Steam alternate-library path detected.'
