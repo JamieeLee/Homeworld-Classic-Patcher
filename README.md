@@ -67,12 +67,12 @@ Close the game, remove or rename the modified `Homeworld.exe`, then rename the `
 - `patches.json` — 74 explicit offset/byte modifications and checksums
 - `README.md` — source documentation
 
-## Credits and attribution
+## Credits
 
-The underlying docking, widescreen, and resolution changes were originally researched and developed by **Lou the Lou**, creator of [HW1 Classic Docking Fix + Widescreen Support](https://www.nexusmods.com/homeworldremastered/mods/10). Credit for those fixes belongs to Lou the Lou; this repository provides a standalone patching workflow built around them.
+Original docking, widescreen, and resolution fixes: **Lou the Lou** — [HW1 Classic Docking Fix + Widescreen Support](https://www.nexusmods.com/homeworldremastered/mods/10).
 
-This is an unofficial community project, not affiliated with Gearbox, Blackbird Interactive, Valve, or Nexus Mods. Homeworld and related names are trademarks of their respective owners. No game executable is distributed.
+## Project information
 
-## License
+This unofficial community tool packages the fixes as verified byte patches that users apply to **their own** Homeworld 1 Classic executable. It is not affiliated with Gearbox, Blackbird Interactive, Valve, or Nexus Mods. Homeworld and related names are trademarks of their respective owners.
 
-The original mod author has given permission for this alternative patch packaging, as confirmed by the repository maintainer. This does **not** grant a general license to redistribute the original mod or claim authorship of its fixes. No repository-wide software license has been selected yet.
+Permission to distribute the patch data was confirmed by the repository maintainer. No game executable is included, and no repository-wide software license has been selected.
