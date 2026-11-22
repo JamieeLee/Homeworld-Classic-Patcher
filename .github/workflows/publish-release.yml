@@ -1,0 +1,98 @@
+name: Publish Homeworld Classic Patcher
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version heading already present in CHANGELOG.md (e.g. v0.1.3)"
+        type: string
+        required: true
+      prerelease:
+        description: "Mark as pre-release"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  verify-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate PowerShell syntax and smoke test Steam/GOG
+        shell: pwsh
+        run: |
+          foreach ($file in @('Patch-Homeworld1Classic.ps1', 'tests/Windows-SmokeTests.ps1')) {
+            $tokens = $null
+            $parseErrors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file).Path, [ref]$tokens, [ref]$parseErrors) | Out-Null
+            if ($parseErrors.Count -gt 0) { throw "PowerShell syntax error in $file" }
+          }
+          & .\tests\Windows-SmokeTests.ps1
+          if ($LASTEXITCODE -ne 0) { throw "Steam/GOG tests failed." }
+          $launcher = Get-Content RUN_PATCHER.cmd -Raw
+          if (-not $launcher.Contains('powershell.exe -NoProfile -File ')) { throw 'Missing normal PowerShell launch.' }
+          if (-not $launcher.Contains('choice /C YN')) { throw 'Missing policy consent question.' }
+          if (-not $launcher.Contains('if errorlevel 2 goto MANUAL')) { throw 'No must skip bypass.' }
+          Write-Host 'Windows validations passed.'
+
+  publish:
+    needs: verify-windows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate manifest and extract release notes from single changelog
+        env:
+          RELEASE_TAG: ${{ inputs.version }}
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, re
+          tag = os.environ['RELEASE_TAG']
+          assert re.fullmatch(r'v[0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9][A-Za-z0-9.-]*)?', tag), 'Invalid tag.'
+          assert not pathlib.Path('RELEASE_NOTES.md').exists(), 'Use the single CHANGELOG.md.'
+          log = pathlib.Path('CHANGELOG.md').read_text(encoding='utf-8')
+          headings = list(re.finditer(r'^## \[' + re.escape(tag) + r'\]\([^)]+\) — (.+)$', log, re.M))
+          assert len(headings) == 1, 'Version needs one heading in CHANGELOG.md.'
+          head = headings[0]
+          next_heading = re.search(r'^## ', log[head.end():], re.M)
+          end = head.end() + next_heading.start() if next_heading else len(log)
+          details = log[head.end():end].strip()
+          assert details, 'Empty changelog entry.'
+          title = tag + ' — ' + head.group(1)
+          pathlib.Path('release-notes.tmp.md').write_text('# ' + title + '\n\n' + details + '\n', encoding='utf-8')
+          pathlib.Path('release-title.tmp.txt').write_text(title, encoding='utf-8')
+          d = json.loads(pathlib.Path('patches.json').read_text())
+          assert d['version'] == '2.303'
+          assert d['patch_count'] == len(d['patches']) == 74
+          assert d['source_sha256'] == '421c114e832c56bd1994fe97c342969ef69881bb74399e67bef979c6923df381'
+          assert d['patched_sha256'] == '166c3a23a0eeb5789823602b2571be98ae926a9447376c4b843ac0d1179884fb'
+          ranges = []
+          doc = pathlib.Path('PATCH_REFERENCE.md').read_text()
+          assert re.findall(r'^\|\s*(\d+)\s*\|', doc, re.M) == [str(i) for i in range(1,75)]
+          for p in d['patches']:
+              a, b = bytes.fromhex(p['old']), bytes.fromhex(p['new'])
+              assert a and len(a) == len(b) and 0 <= p['offset'] <= d['source_size'] - len(a)
+              ranges.append((p['offset'], p['offset']+len(a)))
+              assert ('0x' + format(p['offset'], 'X')) in doc
+          ranges.sort()
+          assert all(a[1] <= b[0] for a,b in zip(ranges,ranges[1:]))
+          assert 'Copyright (c) 2026 louthelou' in pathlib.Path('THIRD_PARTY_NOTICES.md').read_text()
+          print('Changelog, patch manifest, and license notice verified.')
+          PY
+      - name: Package and publish version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.version }}
+          IS_PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "::error::Existing release detected; refusing to overwrite."
+            exit 1
+          fi
+          zip -j -q -9 Homeworld1Classic_Reusable_Offline_Patcher_2.303.zip RUN_PATCHER.cmd Patch-Homeworld1Classic.ps1 patches.json README.md CHANGELOG.md PATCH_REFERENCE.md THIRD_PARTY_NOTICES.md LICENSE
+          sha256sum Homeworld1Classic_Reusable_Offline_Patcher_2.303.zip > SHA256SUMS.txt
+          options=()
+          if [ "$IS_PRERELEASE" = "true" ]; then options+=(--prerelease); fi
+          gh release create "$RELEASE_TAG" Homeworld1Classic_Reusable_Offline_Patcher_2.303.zip SHA256SUMS.txt --title "$(cat release-title.tmp.txt)" --target "$GITHUB_SHA" --notes-file release-notes.tmp.md "${options[@]}"
