@@ -1,16 +1,17 @@
-# v0.1.1 — Steam auto-detection (pre-release)
+# v0.1.1 — Steam Auto-Detection (pre-release)
 
-Improves setup of the offline Homeworld 1 Classic build 2.303 patcher.
+This update makes the Homeworld 1 Classic 2.303 patcher easier to use by locating your Steam installation automatically.
 
-- Automatically searches Steam installation locations and alternate library folders for **Homeworld Remastered Collection** (AppID `244160`).
-- Displays the detected `Homeworld1Classic\exe\Homeworld.exe` path for explicit **Y** confirmation.
-- Falls back to a file picker if Steam is not found or its detected path is declined.
-- Retains exact stock SHA-256 verification, an original backup, post-patch verification, and all 74 byte modifications.
-- Does **not** support distinct CD-ROM builds or other versions; mismatched EXEs are refused.
-- Contains no copyrighted game EXE and no third-party installer.
+### Changes
+- Searches Steam's installed libraries, including additional library folders, for **Homeworld Remastered Collection** (AppID `244160`).
+- Shows the detected `Homeworld1Classic\exe\Homeworld.exe` path and asks you to confirm it.
+- Opens a manual file picker if the executable can't be found automatically or if you decline the detected path.
+- Keeps the exact SHA-256 compatibility check, original-file backup, all 74 byte patches, and verification of the finished EXE.
 
-**Testing:** The earlier version's patched game launched at 2560×1440. Steam auto-detection and the intermittent docking issue have not yet been comprehensively tested on user systems.
+### Compatibility
+- Supports **Homeworld 1 Classic build 2.303**.
+- Other builds, including different CD-ROM executables, are not patched unless they exactly match the supported file.
+- Works offline and includes no game executable.
 
-**Credit:** Original docking and widescreen modifications by **Lou the Lou**. This project republishes those fixes as an inspectable script-based patcher with permission reported by the maintainer.
-
-Original mod: https://www.nexusmods.com/homeworldremastered/mods/10
+### Testing
+The patcher has been used to launch Homeworld 1 Classic at **2560×1440**. Steam auto-detection still needs testing across different Steam installations, and the intermittent docking issue has not yet been conclusively verified through repeated gameplay.
