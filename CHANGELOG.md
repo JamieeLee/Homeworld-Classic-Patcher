@@ -4,11 +4,26 @@ All notable changes to the **Homeworld 1 Classic Portable Patcher** are recorded
 
 ## Unreleased
 
+## [v0.1.3](https://github.com/JamieeLee/Homeworld-Classic-Patcher/releases/tag/v0.1.3) — Restore Original from Backup (pre-release)
+
+### Added
+- **Restore Original EXE** in the existing `RUN_PATCHER.cmd` launcher, alongside Install Patch and Exit.
+- Verification that the current `Homeworld.exe` has the expected patched SHA-256 and that a local timestamped `.bak` matches the exact stock 2.303 SHA-256.
+- Clear `RESTORE` confirmation before atomically replacing the patched executable with a copy of the verified original backup. The original backup is preserved.
+- Safe refusal if the game is running, the EXE is not the expected patched version, or no valid backup is available; restoring an already-original EXE is a no-op.
+- Synthetic Windows tests for missing/invalid backups, cancellation, successful restoration, and repeat operation.
+
 ### Documentation
-- Explained **why** the executable requires each patch group: docking and collision avoidance, flight/camera calculations, resolution detection, widescreen movement orders, and Windows settings.
-- Clarified what the patcher itself reads or writes versus what the **patched game** does with its settings.
+- Explained why the executable requires each patch group: docking and collision avoidance, flight/camera calculations, resolution detection, widescreen movement orders, and Windows settings.
+- Clarified what the patcher itself reads or writes versus what the patched game does with its settings.
 - Linked the full 74-site technical reference from the README.
-- Expanded the technical reference with a plain-English explanation for **each of the 74 byte modifications**, including the assembly instruction's role and the game behavior it affects.
+- Expanded the technical reference with an explanation of **each of the 74 byte modifications**, including the assembly instruction's role and game behavior it affects.
+- Documented the restore workflow and direct GitHub release asset downloads.
+
+### Compatibility
+- No changes to the 74 patch definitions, source hash, or patched output hash.
+- Steam and GOG discovery remain available. Exact **Homeworld 1 Classic 2.303** builds only.
+- Windows PowerShell execution policy is respected by default; temporary override still requires explicit user consent.
 
 ## [v0.1.2](https://github.com/JamieeLee/Homeworld-Classic-Patcher/releases/tag/v0.1.2) — Steam & GOG Auto-Detection (pre-release)
 
