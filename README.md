@@ -1,18 +1,18 @@
 # Homeworld 1 Classic — Portable Patcher
 
-An **unofficial, offline, inspectable** byte-patch utility for **Homeworld 1 Classic build 2.303** as supplied with *Homeworld Remastered Collection*.
+An **unofficial, offline, portable** patcher for **Homeworld 1 Classic build 2.303** as supplied with *Homeworld Remastered Collection*.
 
-It applies the 74 byte modifications described by the original **HW1 Classic Docking Fix + Widescreen Support** mod. **Credit for discovering the gameplay and video fixes belongs to the original mod author, Lou the Lou.** This repository is an alternative *distribution mechanism* for the fixes, not a claim of authorship of the original reverse-engineering work.
+This utility provides a convenient, script-based way to apply the 74 byte modifications from **HW1 Classic Docking Fix + Widescreen Support**, created by **Lou the Lou**. All credit for discovering and developing the original docking, widescreen, and resolution fixes belongs to Lou the Lou. This project focuses on packaging and applying those fixes.
 
 Original mod: https://www.nexusmods.com/homeworldremastered/mods/10
 
 > **Scope:** Homeworld **1 Classic only**. **Not** Homeworld 1 Remastered, Homeworld 2, or Homeworld 3.
 
-## Why a readable patcher?
+## How it works
 
-This package contains no game executable, no bundled third-party installer, and no downloaded payload. Its patch logic is a readable Windows PowerShell script, with all offsets and original/replacement bytes in `patches.json`. It verifies the exact stock executable before modification, writes a backup, and verifies the expected output SHA-256. The script is designed to exit without modifying incompatible builds.
+The patcher uses an included PowerShell script and `patches.json` manifest to apply the original mod's fixes directly to your installed game. Everything needed is bundled in the ZIP, so it works offline and does not distribute a copy of the game executable.
 
-**A readable script and checksums make auditing easier; they do not guarantee safety.** Review the contents before running, and back up important files.
+Before changing anything, it verifies that `Homeworld.exe` matches the supported build using SHA-256. It then checks all 74 original byte sequences, creates a backup, applies the patches, and verifies the finished EXE against the expected SHA-256. If the executable does not match, the patcher stops without modifying it. The script and patch data are available in this repository for anyone who wants to inspect or adapt the tooling.
 
 ## Installation
 
@@ -25,7 +25,7 @@ This package contains no game executable, no bundled third-party installer, and 
 
 Steam detection only reads existing Steam registry installation paths, `libraryfolders.vdf`, and `appmanifest_244160.acf`. It doesn't modify Steam settings. **Original CD-ROM versions aren't supported unless their EXE happens to match the exact verified 2.303 SHA-256.** Otherwise, they are safely refused.
 
-Requires the built-in Windows PowerShell, not Python. It does not need internet access or to execute the original author's installer. PowerShell's execution-policy override is limited to the spawned process; it is not a permanent change to your system settings.
+Requires the built-in Windows PowerShell, not Python. The patcher runs offline using the files included in the release ZIP. PowerShell's execution-policy override is limited to the spawned process; it is not a permanent change to your system settings.
 
 ## Supported hashes
 
@@ -56,7 +56,7 @@ Close the game, remove or rename the modified `Homeworld.exe`, then rename the `
 - `patches.json` — 74 explicit offset/byte modifications and checksums
 - `README.md` — source documentation
 
-## Attribution and independence
+## Credits and attribution
 
 This is an unofficial community packaging of patches originating from the **HW1 Classic Docking Fix + Widescreen Support** project by **Lou the Lou**. No affiliation with Gearbox, Blackbird Interactive, Valve, or Nexus Mods. Homeworld and related names are trademarks of their respective owners. The game executable is **not** redistributed here.
 
