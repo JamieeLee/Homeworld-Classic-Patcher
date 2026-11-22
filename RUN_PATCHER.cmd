@@ -2,9 +2,7 @@
 setlocal EnableExtensions DisableDelayedExpansion
 cd /d "%~dp0"
 title Homeworld 1 Classic 2.303 Portable Patcher
-echo Homeworld 1 Classic - Steam and GOG
-echo We use your current PowerShell execution policy by default.
-echo The patcher verifies the exact game build and asks before changing your EXE.
+echo Homeworld 1 Classic Patcher - build 2.303
 echo.
 set "operation="
 if not "%~1"=="" goto RUN
@@ -35,25 +33,22 @@ rem The patcher uses exit 2 for normal patch/validation errors.
 rem Exit 1 can indicate Windows prevented PowerShell from launching the script.
 if not "%status%"=="1" goto END
 echo.
-echo The script did not start successfully. If the message above mentions
-echo execution policy, Windows may have blocked the PowerShell script.
-echo.
-echo You can allow a temporary execution-policy override for THIS run only.
-echo It will not change your registry or persistent PowerShell settings.
-choice /C YN /N /M "Retry with a one-run execution-policy bypass? [Y/N]: "
+echo PowerShell could not start the patcher.
+echo If the error above mentions execution policy, you may allow a
+echo temporary override for this run only. No system settings change.
+choice /C YN /N /M "Retry with a temporary override? [Y/N]: "
 if errorlevel 2 goto MANUAL
 echo.
-echo You explicitly approved the temporary process-only override.
+echo Retrying with the temporary override you approved.
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Patch-Homeworld1Classic.ps1" %operation% %*
 set "status=%errorlevel%"
 goto END
 
 :MANUAL
 echo.
-echo No override was used. To handle execution policy yourself, run:
+echo No override used. To review your PowerShell policy, run:
 echo    powershell.exe -NoProfile -Command "Get-ExecutionPolicy -List"
-echo You can review or change your own PowerShell settings, or unblock a
-echo downloaded script in File Properties, then run this launcher again.
+echo Review your policy or unblock the downloaded script before retrying.
 
 :END
 echo.
