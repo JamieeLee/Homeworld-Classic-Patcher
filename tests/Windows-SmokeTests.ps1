@@ -163,6 +163,103 @@ try {
     }
     Write-Host 'PASS: Already-original EXE is an unchanged no-op.'
 
+    # The following fixture exercises the *install* path with 74 non-overlapping changes,
+    # without needing or modifying the real game executable.
+    [byte[]]$stockBytes = New-Object byte[] 96
+    [byte[]]$patchBytes = New-Object byte[] 96
+    for ($i = 0; $i -lt 96; $i++) {
+        $stockBytes[$i] = 0x11
+        $patchBytes[$i] = 0x11
+    }
+    for ($i = 0; $i -lt 74; $i++) { $patchBytes[$i] = 0x22 }
+    [IO.File]::WriteAllBytes($gogExe, $stockBytes)
+    $testStockHash = (Get-FileHash -LiteralPath $gogExe -Algorithm SHA256).Hash.ToLowerInvariant()
+    [IO.File]::WriteAllBytes($gogExe, $patchBytes)
+    $testPatchedHash = (Get-FileHash -LiteralPath $gogExe -Algorithm SHA256).Hash.ToLowerInvariant()
+    [IO.File]::WriteAllBytes($gogExe, $stockBytes)
+    $installFixture = [pscustomobject]@{
+        version = '2.303'
+        patch_count = 74
+        source_sha256 = $testStockHash
+        patched_sha256 = $testPatchedHash
+        source_size = 96
+        patches = @(0..73 | ForEach-Object {
+            [pscustomobject]@{ offset=$_; old='11'; new='22'; group='dock' }
+        })
+    }
+    $installFixture | ConvertTo-Json -Depth 5 |
+        Set-Content -LiteralPath (Join-Path $restoreKit 'patches.json') -Encoding UTF8
+
+    # Remove the earlier 5-byte fixture backup and install from a clean directory.
+    if (Test-Path -LiteralPath $restoreBackup) { Remove-Item -LiteralPath $restoreBackup -Force }
+    $canonical = Join-Path (Split-Path $gogExe -Parent) 'Homeworld.exe.original-2.303.bak'
+    if (Test-Path -LiteralPath $canonical) { throw 'Unexpected backup before first install.' }
+    'YES' | & powershell.exe -NoProfile -File $restoreScript -GameExePath $gogExe *> $null
+    if ($LASTEXITCODE -ne 0) { throw "Initial install failed: $LASTEXITCODE" }
+    if ((Get-FileHash -LiteralPath $gogExe -Algorithm SHA256).Hash.ToLowerInvariant() -ne $testPatchedHash) {
+        throw 'Initial install did not produce expected patched bytes.'
+    }
+    if ((Get-FileHash -LiteralPath $canonical -Algorithm SHA256).Hash.ToLowerInvariant() -ne $testStockHash) {
+        throw 'Canonical backup missing or invalid after install.'
+    }
+    Write-Host 'PASS: First install created one canonical verified stock backup.'
+
+    # Restore then patch again: the same verified backup must be reused, no new legacy files.
+    'RESTORE' | & powershell.exe -NoProfile -File $restoreScript -GameExePath $gogExe -RestoreOriginal *> $null
+    if ($LASTEXITCODE -ne 0) { throw 'Synthetic restore before reinstall failed.' }
+    'YES' | & powershell.exe -NoProfile -File $restoreScript -GameExePath $gogExe *> $null
+    if ($LASTEXITCODE -ne 0) { throw 'Reinstall failed.' }
+    if ((Get-FileHash -LiteralPath $canonical -Algorithm SHA256).Hash.ToLowerInvariant() -ne $testStockHash) {
+        throw 'Canonical backup was overwritten or modified.'
+    }
+    $timestampBackups = @(Get-ChildItem -LiteralPath (Split-Path $gogExe -Parent) -Filter 'Homeworld.exe.original-2.303-*.bak' -File)
+    if ($timestampBackups.Count -ne 0) { throw 'Repeated installation created redundant timestamped backups.' }
+    Write-Host 'PASS: Repeated restore/install cycles reuse one original backup.'
+
+    # Simulate two old timestamped backups and one invalid backup in a pre-upgrade folder.
+    $legacyFolder = Split-Path $gogExe -Parent
+    $legacyA = Join-Path $legacyFolder 'Homeworld.exe.original-2.303-20261122-040437-76400f46.bak'
+    $legacyB = Join-Path $legacyFolder 'Homeworld.exe.original-2.303-20261122-052759-5be55a04.bak'
+    $legacyCorrupt = Join-Path $legacyFolder 'Homeworld.exe.original-2.303-20261122-060000-badbad12.bak'
+    [IO.File]::WriteAllBytes($legacyA, $stockBytes)
+    [IO.File]::WriteAllBytes($legacyB, $stockBytes)
+    [IO.File]::WriteAllBytes($legacyCorrupt, [byte[]](1, 2, 3))
+    Remove-Item -LiteralPath $canonical -Force
+
+    # Cancellation does not create a canonical file or delete any old files.
+    'NO' | & powershell.exe -NoProfile -File $restoreScript -GameExePath $gogExe -CleanBackups *> $null
+    if ($LASTEXITCODE -ne 0 -or
+        (Test-Path -LiteralPath $canonical) -or
+        -not (Test-Path -LiteralPath $legacyA) -or
+        -not (Test-Path -LiteralPath $legacyB)) {
+        throw 'Cleanup cancellation modified backup files.'
+    }
+    Write-Host 'PASS: Declining cleanup preserves all backups.'
+
+    # Explicit consent consolidates both verified legacy copies, preserving invalid data.
+    'CLEAN' | & powershell.exe -NoProfile -File $restoreScript -GameExePath $gogExe -CleanBackups *> $null
+    if ($LASTEXITCODE -ne 0) { throw "Backup cleanup failed: $LASTEXITCODE" }
+    if ((Get-FileHash -LiteralPath $canonical -Algorithm SHA256).Hash.ToLowerInvariant() -ne $testStockHash) {
+        throw 'Cleanup did not retain a verified canonical original.'
+    }
+    if ((Test-Path -LiteralPath $legacyA) -or (Test-Path -LiteralPath $legacyB)) {
+        throw 'Cleanup failed to remove verified legacy duplicates.'
+    }
+    if (-not (Test-Path -LiteralPath $legacyCorrupt)) {
+        throw 'Cleanup deleted an unverified legacy file.'
+    }
+    if ((Get-FileHash -LiteralPath $gogExe -Algorithm SHA256).Hash.ToLowerInvariant() -ne $testPatchedHash) {
+        throw 'Cleanup modified the current game executable.'
+    }
+    Write-Host 'PASS: Old verified duplicates consolidated; invalid backup and game EXE left untouched.'
+
+    # A second cleanup is an idempotent no-op; no new copies should appear.
+    & powershell.exe -NoProfile -File $restoreScript -GameExePath $gogExe -CleanBackups *> $null
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $canonical)) {
+        throw 'Repeated cleanup failed.'
+    }
+    Write-Host 'PASS: Repeated cleanup is a no-op.'
+
     # The last native process intentionally exited 2; do not leak that into the CI shell.
     $global:LASTEXITCODE = 0
 } finally {
